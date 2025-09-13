@@ -10,6 +10,13 @@ const WEBHOOK_URL = process.env.WEBHOOK_URL; // Discord/Slack webhook
 const API_KEY = process.env.API_KEY || 'your-secret-api-key'; // Bảo mật API
 const PORT = process.env.PORT || 3000;
 
+// Log environment variables for debugging
+console.log('🔧 Environment variables:');
+console.log(`   KEY_ID: ${KEY_ID ? 'Set' : 'Not set'}`);
+console.log(`   API_KEY: ${API_KEY ? 'Set' : 'Not set'}`);
+console.log(`   WEBHOOK_URL: ${WEBHOOK_URL ? 'Set' : 'Not set'}`);
+console.log(`   PORT: ${PORT}`);
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -263,7 +270,7 @@ app.post('/auto-refresh', async (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     logWithTime(`🚀 Token server started on port ${PORT}`);
     logWithTime(`📡 Endpoints:`);
     logWithTime(`   GET  /health - Health check`);
@@ -275,7 +282,11 @@ app.listen(PORT, () => {
     // Initial token fetch
     setTimeout(async () => {
         logWithTime('🔄 Initial token fetch...');
-        await getToken();
+        try {
+            await getToken();
+        } catch (error) {
+            logWithTime(`❌ Initial token fetch failed: ${error.message}`);
+        }
     }, 5000);
 });
 
