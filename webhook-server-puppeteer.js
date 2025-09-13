@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import 'dotenv/config';
-import { chromium } from 'playwright';
-import { execSync } from 'child_process';
+import puppeteer from 'puppeteer';
 import fs from 'fs';
 import express from 'express';
 import cors from 'cors';
@@ -54,7 +53,7 @@ async function notify(message) {
 }
 
 async function getToken() {
-    const browser = await chromium.launch({ 
+    const browser = await puppeteer.launch({ 
         headless: true,
         args: [
             '--no-sandbox', 
@@ -88,7 +87,7 @@ async function getToken() {
         const bodyText = await page.evaluate(() => document.body.innerText || '');
         
         // Check for cooldown
-        const cooldownMatch = bodyText.match(/Chờ[:\s]*([^\\n]+)/);
+        const cooldownMatch = bodyText.match(/Chờ[:\s]*([^\n]+)/);
         if (cooldownMatch) {
             const cooldown = cooldownMatch[1];
             logWithTime(`⏰ Token on cooldown: ${cooldown}`);
@@ -277,15 +276,6 @@ app.post('/auto-refresh', async (req, res) => {
     });
 });
 
-// Install Playwright browsers on startup
-try {
-    logWithTime('🔧 Installing Playwright browsers...');
-    execSync('npx playwright install chromium', { stdio: 'inherit' });
-    logWithTime('✅ Playwright browsers installed');
-} catch (error) {
-    logWithTime(`⚠️  Failed to install Playwright browsers: ${error.message}`);
-}
-
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
     logWithTime(`🚀 Token server started on port ${PORT}`);
@@ -304,7 +294,7 @@ app.listen(PORT, '0.0.0.0', () => {
         } catch (error) {
             logWithTime(`❌ Initial token fetch failed: ${error.message}`);
         }
-    }, 10000); // Increased delay to allow browser installation
+    }, 5000);
 });
 
 // Graceful shutdown
