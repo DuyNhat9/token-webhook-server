@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server-token.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/token",
+      "schedule": "*/30 * * * *"
+    }
+  ],
+  "env": {
+    "KEY_ID": "@key_id",
+    "WEBHOOK_URL": "@webhook_url"
+  }
+}
