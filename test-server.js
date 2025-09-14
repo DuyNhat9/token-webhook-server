@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import 'dotenv/config';
+import fetch from 'node-fetch';
 
 const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000';
 const API_KEY = process.env.API_KEY || 'your-secret-api-key-123';
