@@ -3,7 +3,7 @@ import fetch from 'node-fetch';
 import fs from 'fs';
 
 const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000';
-const API_KEY = process.env.API_KEY || 'your-secret-api-key-123';
+const API_KEY = process.env.API_KEY;
 
 async function uploadToken() {
     try {

@@ -73,7 +73,10 @@ app.get('/status', (req, res) => {
 app.post('/upload-token', async (req, res) => {
     const { token, apiKey } = req.body;
 
+    logWithTime(`🔍 Debug: Received apiKey: "${apiKey}", Expected: "${API_KEY}"`);
+    
     if (apiKey !== API_KEY) {
+        logWithTime(`❌ API key mismatch: "${apiKey}" !== "${API_KEY}"`);
         return res.status(401).json({ error: 'Invalid API key' });
     }
 
