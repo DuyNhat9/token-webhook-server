@@ -38,38 +38,17 @@ function logWithTime(message) {
     console.log(`[${timeStr} ${dateStr}] ${message}`);
 }
 
-// Email sending function
-async function sendAllTokensEmail(token, tokenInfo) {
-    if (!GMAIL_USER || !GMAIL_PASS || !EMAIL_TO) {
-        logWithTime('⚠️ Email credentials not configured, skipping email notification');
+// Telegram sending function
+async function sendAllTokensTelegram(token, tokenInfo) {
+    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8393051379:AAFjXE1Ww6iRjcldkkVfFzD6ySj36HlP7Zs';
+    const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+    
+    if (!TELEGRAM_CHAT_ID) {
+        logWithTime('⚠️ Telegram Chat ID not configured, skipping Telegram notification');
         return;
     }
 
     try {
-        const transporter = nodemailer.createTransport({
-            service: 'gmail',
-            auth: {
-                user: GMAIL_USER,
-                pass: GMAIL_PASS
-            },
-            // Increased timeout settings for Railway
-            connectionTimeout: 60000, // 60 seconds
-            greetingTimeout: 60000,   // 60 seconds
-            socketTimeout: 60000,     // 60 seconds
-            pool: true,
-            maxConnections: 1,
-            maxMessages: 1,
-            // Additional settings for Railway
-            secure: true,
-            tls: {
-                rejectUnauthorized: false,
-                ciphers: 'SSLv3'
-            },
-            // Retry settings
-            retryDelay: 5000,
-            retryAttempts: 3
-        });
-
         const now = new Date();
         const timeStr = now.toLocaleTimeString('vi-VN', { 
             timeZone: 'Asia/Ho_Chi_Minh',
@@ -77,93 +56,100 @@ async function sendAllTokensEmail(token, tokenInfo) {
         });
         const dateStr = now.toLocaleDateString('vi-VN');
 
-        // Tạo bảng danh sách tất cả token
-        let emailContent = `
-            <h2>🎉 Danh Sách Token (Từ Cũ Đến Mới)</h2>
-            <p><strong>Thời gian gửi:</strong> ${timeStr} ${dateStr}</p>
-            <p><strong>Token mới vừa lấy:</strong> <span style="color: green; font-weight: bold;">✅ ${tokenInfo.subject}</span></p>
-            <hr>
-            
-            <h3>📋 Bảng Danh Sách Token</h3>
-            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-family: Arial, sans-serif;">
-                <thead>
-                    <tr style="background-color: #f8f9fa;">
-                        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #e9ecef;">#</th>
-                        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #e9ecef;">Token</th>
-                        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #e9ecef;">Subject</th>
-                        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #e9ecef;">Expires</th>
-                        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #e9ecef;">Time Left</th>
-                        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #e9ecef;">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
+        // Read backup tokens
+        let backupContent = '';
+        try {
+            backupContent = fs.readFileSync('tokens-backup.txt', 'utf8');
+        } catch (error) {
+            logWithTime('⚠️ No backup tokens file found');
+        }
 
-        // Thêm token mới (đầu tiên trong bảng)
-        emailContent += `
-                    <tr style="background-color: #d4edda;">
-                        <td style="border: 1px solid #ddd; padding: 10px; font-weight: bold;">1</td>
-                        <td style="border: 1px solid #ddd; padding: 10px; font-family: monospace; font-size: 11px; word-break: break-all;">${token}</td>
-                        <td style="border: 1px solid #ddd; padding: 10px;">${tokenInfo.subject}</td>
-                        <td style="border: 1px solid #ddd; padding: 10px;">${tokenInfo.expires}</td>
-                        <td style="border: 1px solid #ddd; padding: 10px;">${tokenInfo.timeLeft} phút</td>
-                        <td style="border: 1px solid #ddd; padding: 10px;"><span style="color: green; font-weight: bold;">🆕 MỚI</span></td>
-                    </tr>
-        `;
+        // Parse backup tokens
+        const backupTokens = [];
+        const sections = backupContent.split('=== TOKEN BACKUP');
+        for (let i = 1; i < sections.length; i++) {
+            const section = sections[i].trim();
+            if (section) {
+                const lines = section.split('\n');
+                const token = lines[0].replace('Token: ', '').trim();
+                const subject = lines[1].replace('Subject: ', '').trim();
+                const expires = lines[2].replace('Expires: ', '').trim();
+                const timeLeft = lines[3].replace('Time Left: ', '').replace(' seconds', '').trim();
+                const timestamp = lines[4].replace('Timestamp: ', '').trim();
+                
+                backupTokens.push({
+                    token,
+                    subject,
+                    expires,
+                    timeLeft: parseInt(timeLeft),
+                    timestamp
+                });
+            }
+        }
 
-        // Thêm thông tin về API
-        emailContent += `
-                </tbody>
-            </table>
-            
-            <h3>🔗 Thông Tin API</h3>
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0; border-left: 4px solid #007bff;">
-                <p><strong>📡 API Endpoints:</strong></p>
-                <ul>
-                    <li><strong>Lấy Token:</strong> <code>GET https://token-webhook-server-production.up.railway.app/token</code></li>
-                    <li><strong>Health Check:</strong> <code>GET https://token-webhook-server-production.up.railway.app/health</code></li>
-                    <li><strong>Server Status:</strong> <code>GET https://token-webhook-server-production.up.railway.app/status</code></li>
-                    <li><strong>Force Refresh:</strong> <code>POST https://token-webhook-server-production.up.railway.app/refresh</code></li>
-                </ul>
-            </div>
-        `;
-
-        emailContent += `
-            <hr>
-            <p><em>📧 Email được gửi tự động từ Railway Token Server</em></p>
-            <p><em>🤖 Server tự động lấy token và gửi email thông báo</em></p>
-        `;
-
-        const subject = `🎉 Token Mới ${timeStr} ${dateStr}`;
+        // Create Telegram message
+        let message = `🎉 *DANH SÁCH TẤT CẢ TOKEN* (Từ Cũ Đến Mới)\n\n`;
+        message += `📅 *Thời gian gửi:* ${timeStr} ${dateStr}\n`;
+        message += `📊 *Tổng số token:* ${backupTokens.length + 1} tokens\n\n`;
         
-        const mailOptions = {
-            from: GMAIL_USER,
-            to: EMAIL_TO,
-            subject: subject,
-            html: emailContent
-        };
+        // Add current token first
+        message += `🆕 *TOKEN MỚI NHẤT:*\n`;
+        message += `🔑 \`${token}\`\n`;
+        message += `👤 *Subject:* ${tokenInfo.subject}\n`;
+        message += `⏰ *Expires:* ${tokenInfo.expires}\n`;
+        message += `⏱️ *Time Left:* ${Math.floor(tokenInfo.timeLeft / 3600)}h ${Math.floor((tokenInfo.timeLeft % 3600) / 60)}m\n`;
+        message += `🏷️ *Type:* ${tokenInfo.type || 'session'}\n`;
+        message += `🏢 *Issuer:* ${tokenInfo.issuer || 'Unknown'}\n\n`;
+        
+        // Add backup tokens
+        if (backupTokens.length > 0) {
+            message += `📋 *TOKEN CŨ (Backup):*\n`;
+            backupTokens.forEach((backupToken, index) => {
+                const timeLeftHours = Math.floor(backupToken.timeLeft / 3600);
+                const timeLeftMinutes = Math.floor((backupToken.timeLeft % 3600) / 60);
+                const isExpired = backupToken.timeLeft <= 0;
+                const status = isExpired ? '❌ EXPIRED' : '✅ ACTIVE';
+                
+                message += `\n*${index + 1}.* ${status}\n`;
+                message += `🔑 \`${backupToken.token}\`\n`;
+                message += `👤 *Subject:* ${backupToken.subject}\n`;
+                message += `⏰ *Expires:* ${backupToken.expires}\n`;
+                message += `⏱️ *Time Left:* ${isExpired ? 'EXPIRED' : `${timeLeftHours}h ${timeLeftMinutes}m`}\n`;
+                message += `📅 *Created:* ${backupToken.timestamp}\n`;
+            });
+        }
+        
+        message += `\n🤖 *From:* Railway Token Server\n`;
+        message += `🔗 *Server:* https://token-webhook-server-production.up.railway.app`;
 
-        logWithTime('📤 Sending email with new token...');
-        const result = await transporter.sendMail(mailOptions);
-        logWithTime('✅ Email sent successfully!');
-        logWithTime('📧 Message ID:', result.messageId);
+        // Send to Telegram
+        logWithTime('📤 Sending all tokens to Telegram...');
+        const telegramMessage = {
+            chat_id: TELEGRAM_CHAT_ID,
+            text: message,
+            parse_mode: 'Markdown'
+        };
+        
+        const telegramResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(telegramMessage)
+        });
+        
+        const telegramData = await telegramResponse.json();
+        
+        if (telegramData.ok) {
+            logWithTime('✅ All tokens sent to Telegram successfully!');
+            logWithTime('📱 Message ID:', telegramData.result.message_id);
+        } else {
+            logWithTime('❌ Telegram failed:', telegramData.description);
+        }
         
     } catch (error) {
-        logWithTime('❌ Email failed:', error.message);
-        logWithTime('Code:', error.code);
+        logWithTime('❌ Telegram failed:', error.message);
         logWithTime('Stack:', error.stack);
-        
-        // Retry email sending
-        logWithTime('🔄 Retrying email in 5 seconds...');
-        setTimeout(async () => {
-            try {
-                const retryResult = await transporter.sendMail(mailOptions);
-                logWithTime('✅ Email retry successful!');
-                logWithTime('📧 Message ID:', retryResult.messageId);
-            } catch (retryError) {
-                logWithTime('❌ Email retry failed:', retryError.message);
-            }
-        }, 5000);
     }
 }
 
@@ -455,8 +441,8 @@ async function getTokenFromWebsite() {
         logWithTime('🎉 Token acquired successfully!');
         logWithTime(`📄 Token Info: ${JSON.stringify(tokenInfo, null, 2)}`);
 
-        // Send email notification with all tokens
-        await sendAllTokensEmail(token, tokenInfo);
+        // Send Telegram notification with all tokens
+        await sendAllTokensTelegram(token, tokenInfo);
 
         // Send webhook notification
         if (WEBHOOK_URL) {
@@ -572,19 +558,19 @@ app.post('/auto-refresh', async (req, res) => {
     });
 });
 
-// Force send email endpoint
-app.post('/force-email', async (req, res) => {
-    logWithTime('📧 Force email triggered');
+// Force send Telegram endpoint
+app.post('/force-telegram', async (req, res) => {
+    logWithTime('📱 Force Telegram triggered');
     try {
         if (!currentToken) {
             return res.status(400).json({ success: false, error: 'No token available' });
         }
         
-        // Send email with current token and all backups
-        await sendAllTokensEmail(currentToken, tokenInfo);
-        res.json({ success: true, message: 'Email sent successfully' });
+        // Send Telegram with current token and all backups
+        await sendAllTokensTelegram(currentToken, tokenInfo);
+        res.json({ success: true, message: 'Telegram sent successfully' });
     } catch (error) {
-        logWithTime(`❌ Force email failed: ${error.message}`);
+        logWithTime(`❌ Force Telegram failed: ${error.message}`);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -611,11 +597,14 @@ app.listen(PORT, '0.0.0.0', async () => {
     logWithTime(`   GET  /status - Get server status`);
     logWithTime(`   POST /refresh - Force refresh token (requires API key)`);
     logWithTime(`   POST /auto-refresh - Auto refresh (for cron)`);
+    logWithTime(`   POST /force-telegram - Force send all tokens via Telegram`);
     
     logWithTime(`🔧 Environment variables:`);
     logWithTime(`   KEY_ID: ${KEY_ID ? 'Set' : 'Not set'}`);
     logWithTime(`   API_KEY: ${API_KEY ? 'Set' : 'Not set'}`);
     logWithTime(`   WEBHOOK_URL: ${WEBHOOK_URL ? 'Set' : 'Not set'}`);
+    logWithTime(`   TELEGRAM_BOT_TOKEN: ${process.env.TELEGRAM_BOT_TOKEN ? 'Set' : 'Not set'}`);
+    logWithTime(`   TELEGRAM_CHAT_ID: ${process.env.TELEGRAM_CHAT_ID ? 'Set' : 'Not set'}`);
     logWithTime(`   GMAIL_USER: ${GMAIL_USER ? 'Set' : 'Not set'}`);
     logWithTime(`   EMAIL_TO: ${EMAIL_TO ? 'Set' : 'Not set'}`);
     logWithTime(`   PORT: ${PORT}`);
