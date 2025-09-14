@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
 import puppeteer from 'puppeteer';
+import nodemailer from 'nodemailer';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,6 +12,9 @@ const PORT = process.env.PORT || 3000;
 const KEY_ID = process.env.KEY_ID;
 const API_KEY = process.env.API_KEY;
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
+const GMAIL_USER = process.env.GMAIL_USER;
+const GMAIL_PASS = process.env.GMAIL_PASS;
+const EMAIL_TO = process.env.EMAIL_TO;
 
 // Global variables
 let currentToken = null;
@@ -32,6 +36,64 @@ function logWithTime(message) {
     });
     const dateStr = now.toLocaleDateString('vi-VN');
     console.log(`[${timeStr} ${dateStr}] ${message}`);
+}
+
+// Email sending function
+async function sendTokenEmail(token, tokenInfo) {
+    if (!GMAIL_USER || !GMAIL_PASS || !EMAIL_TO) {
+        logWithTime('⚠️ Email credentials not configured, skipping email notification');
+        return;
+    }
+
+    try {
+        const transporter = nodemailer.createTransporter({
+            service: 'gmail',
+            auth: {
+                user: GMAIL_USER,
+                pass: GMAIL_PASS
+            }
+        });
+
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('vi-VN', { 
+            timeZone: 'Asia/Ho_Chi_Minh',
+            hour12: false 
+        });
+        const dateStr = now.toLocaleDateString('vi-VN');
+
+        const subject = `Token ${timeStr} ${dateStr}`;
+        
+        const htmlContent = `
+            <h2>🎉 Token Retrieved Successfully!</h2>
+            <p><strong>Time:</strong> ${timeStr} ${dateStr}</p>
+            <p><strong>Token:</strong></p>
+            <div style="background: #f5f5f5; padding: 10px; border-radius: 5px; word-break: break-all; font-family: monospace;">
+                ${token}
+            </div>
+            <h3>Token Information:</h3>
+            <ul>
+                <li><strong>Subject:</strong> ${tokenInfo.subject}</li>
+                <li><strong>Expires:</strong> ${tokenInfo.expires}</li>
+                <li><strong>Type:</strong> ${tokenInfo.type}</li>
+                <li><strong>Issuer:</strong> ${tokenInfo.issuer}</li>
+                <li><strong>Time Left:</strong> ${tokenInfo.timeLeft} hours</li>
+            </ul>
+            <p><em>This token was automatically retrieved by the Railway server.</em></p>
+        `;
+
+        const mailOptions = {
+            from: GMAIL_USER,
+            to: EMAIL_TO,
+            subject: subject,
+            html: htmlContent
+        };
+
+        await transporter.sendMail(mailOptions);
+        logWithTime(`📧 Token sent to email: ${EMAIL_TO}`);
+        
+    } catch (error) {
+        logWithTime(`❌ Failed to send email: ${error.message}`);
+    }
 }
 
 // Auto token fetching function
@@ -220,6 +282,9 @@ async function getTokenFromWebsite() {
         logWithTime('🎉 Token acquired successfully!');
         logWithTime(`📄 Token Info: ${JSON.stringify(tokenInfo, null, 2)}`);
 
+        // Send email notification
+        await sendTokenEmail(token, tokenInfo);
+
         // Send webhook notification
         if (WEBHOOK_URL) {
             try {
@@ -361,6 +426,8 @@ app.listen(PORT, '0.0.0.0', async () => {
     logWithTime(`   KEY_ID: ${KEY_ID ? 'Set' : 'Not set'}`);
     logWithTime(`   API_KEY: ${API_KEY ? 'Set' : 'Not set'}`);
     logWithTime(`   WEBHOOK_URL: ${WEBHOOK_URL ? 'Set' : 'Not set'}`);
+    logWithTime(`   GMAIL_USER: ${GMAIL_USER ? 'Set' : 'Not set'}`);
+    logWithTime(`   EMAIL_TO: ${EMAIL_TO ? 'Set' : 'Not set'}`);
     logWithTime(`   PORT: ${PORT}`);
     
     // Initial token fetch
