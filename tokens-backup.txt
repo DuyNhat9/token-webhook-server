@@ -19,3 +19,11 @@ Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnb29nbGUtb2F1dGgyfHVzZXJf
 ## Nguyên nhân lỗi email:
 1. Lỗi 1: Đã sửa (createTransporter → createTransport)
 2. Lỗi 2: Connection timeout - có thể do Gmail App Password hoặc network
+
+=== TOKEN BACKUP 17:00:56 14/9/2025 ===
+Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJnb29nbGUtb2F1dGgyfHVzZXJfMDFLNEdCTjNYTThaUENDU1MwUFFQWjlLRDkiLCJ0aW1lIjoiMTc1NzE5MDc0MyIsInJhbmRvbW5lc3MiOiJmMmViNDBmMi0xMjEyLTRiZTciLCJleHAiOjE3NjIzNzQ3NDMsImlzcyI6Imh0dHBzOi8vYXV0aGVudGljYXRpb24uY3Vyc29yLnNoIiwic2NvcGUiOiJvcGVuaWQgcHJvZmlsZSBlbWFpbCBvZmZsaW5lX2FjY2VzcyIsImF1ZCI6Imh0dHBzOi8vY3Vyc29yLmNvbSIsInR5cGUiOiJzZXNzaW9uIn0.gHHMdtHqfv0brWX2dCOAx6hN8mkovZQpTztazOIDYf4Copy
+Subject: google-oauth2|user_01K4GBN3XM8ZPCCSS0PQPZ9KD9
+Expires: 03:32:23 6/11/2025
+Time Left: 1259 minutes
+Last Update: 2025-09-14T09:58:13.343Z
+Backup Time: 17:00:56 14/9/2025

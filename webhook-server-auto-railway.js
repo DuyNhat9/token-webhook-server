@@ -73,32 +73,54 @@ async function sendAllTokensEmail(token, tokenInfo) {
         });
         const dateStr = now.toLocaleDateString('vi-VN');
 
-        // Tạo nội dung email với tất cả token
+        // Tạo bảng danh sách tất cả token
         let emailContent = `
-            <h2>🎉 Token Mới + Tất Cả Token Đã Lấy</h2>
-            <p><strong>Thời gian:</strong> ${timeStr} ${dateStr}</p>
+            <h2>🎉 Danh Sách Token (Từ Cũ Đến Mới)</h2>
+            <p><strong>Thời gian gửi:</strong> ${timeStr} ${dateStr}</p>
+            <p><strong>Token mới vừa lấy:</strong> <span style="color: green; font-weight: bold;">✅ ${tokenInfo.subject}</span></p>
             <hr>
             
-            <h3>🆕 Token Mới Vừa Lấy</h3>
-            <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 10px 0;">
-                <p><strong>Token:</strong> <code style="background: #f0f0f0; padding: 2px 5px; border-radius: 3px;">${token}</code></p>
-                <p><strong>Subject:</strong> ${tokenInfo.subject}</p>
-                <p><strong>Expires:</strong> ${tokenInfo.expires}</p>
-                <p><strong>Time Left:</strong> ${tokenInfo.timeLeft} minutes</p>
-                <p><strong>Type:</strong> ${tokenInfo.type}</p>
-                <p><strong>Issuer:</strong> ${tokenInfo.issuer}</p>
-                <p><strong>Status:</strong> <span style="color: green;">✅ Active</span></p>
-            </div>
+            <h3>📋 Bảng Danh Sách Token</h3>
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-family: Arial, sans-serif;">
+                <thead>
+                    <tr style="background-color: #f8f9fa;">
+                        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #e9ecef;">#</th>
+                        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #e9ecef;">Token</th>
+                        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #e9ecef;">Subject</th>
+                        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #e9ecef;">Expires</th>
+                        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #e9ecef;">Time Left</th>
+                        <th style="border: 1px solid #ddd; padding: 12px; text-align: left; background-color: #e9ecef;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
         `;
 
-        // Thêm thông tin về token backup (nếu có)
+        // Thêm token mới (đầu tiên trong bảng)
         emailContent += `
-            <h3>📚 Lưu Ý</h3>
-            <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin: 10px 0;">
-                <p>📧 <strong>Token này đã được lưu vào server và có thể truy cập qua API:</strong></p>
-                <p>🔗 <strong>API URL:</strong> <code>https://token-webhook-server-production.up.railway.app/token</code></p>
-                <p>📊 <strong>Health Check:</strong> <code>https://token-webhook-server-production.up.railway.app/health</code></p>
-                <p>🔄 <strong>Auto-retry:</strong> Server sẽ tự động thử lại khi hết cooldown</p>
+                    <tr style="background-color: #d4edda;">
+                        <td style="border: 1px solid #ddd; padding: 10px; font-weight: bold;">1</td>
+                        <td style="border: 1px solid #ddd; padding: 10px; font-family: monospace; font-size: 11px; word-break: break-all;">${token}</td>
+                        <td style="border: 1px solid #ddd; padding: 10px;">${tokenInfo.subject}</td>
+                        <td style="border: 1px solid #ddd; padding: 10px;">${tokenInfo.expires}</td>
+                        <td style="border: 1px solid #ddd; padding: 10px;">${tokenInfo.timeLeft} phút</td>
+                        <td style="border: 1px solid #ddd; padding: 10px;"><span style="color: green; font-weight: bold;">🆕 MỚI</span></td>
+                    </tr>
+        `;
+
+        // Thêm thông tin về API
+        emailContent += `
+                </tbody>
+            </table>
+            
+            <h3>🔗 Thông Tin API</h3>
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0; border-left: 4px solid #007bff;">
+                <p><strong>📡 API Endpoints:</strong></p>
+                <ul>
+                    <li><strong>Lấy Token:</strong> <code>GET https://token-webhook-server-production.up.railway.app/token</code></li>
+                    <li><strong>Health Check:</strong> <code>GET https://token-webhook-server-production.up.railway.app/health</code></li>
+                    <li><strong>Server Status:</strong> <code>GET https://token-webhook-server-production.up.railway.app/status</code></li>
+                    <li><strong>Force Refresh:</strong> <code>POST https://token-webhook-server-production.up.railway.app/refresh</code></li>
+                </ul>
             </div>
         `;
 
