@@ -52,13 +52,18 @@ async function sendTokenEmail(token, tokenInfo) {
                 user: GMAIL_USER,
                 pass: GMAIL_PASS
             },
-            // Add timeout and connection settings
-            connectionTimeout: 10000, // 10 seconds
-            greetingTimeout: 10000,   // 10 seconds
-            socketTimeout: 10000,     // 10 seconds
+            // Increased timeout settings for Railway
+            connectionTimeout: 30000, // 30 seconds
+            greetingTimeout: 30000,   // 30 seconds
+            socketTimeout: 30000,     // 30 seconds
             pool: true,
             maxConnections: 1,
-            maxMessages: 1
+            maxMessages: 1,
+            // Additional settings for Railway
+            secure: true,
+            tls: {
+                rejectUnauthorized: false
+            }
         });
 
         const now = new Date();
