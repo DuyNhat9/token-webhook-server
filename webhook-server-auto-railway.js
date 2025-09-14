@@ -51,7 +51,14 @@ async function sendTokenEmail(token, tokenInfo) {
             auth: {
                 user: GMAIL_USER,
                 pass: GMAIL_PASS
-            }
+            },
+            // Add timeout and connection settings
+            connectionTimeout: 10000, // 10 seconds
+            greetingTimeout: 10000,   // 10 seconds
+            socketTimeout: 10000,     // 10 seconds
+            pool: true,
+            maxConnections: 1,
+            maxMessages: 1
         });
 
         const now = new Date();
@@ -88,11 +95,30 @@ async function sendTokenEmail(token, tokenInfo) {
             html: htmlContent
         };
 
-        await transporter.sendMail(mailOptions);
-        logWithTime(`📧 Token sent to email: ${EMAIL_TO}`);
+        // Try to send email with retry
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (retryCount < maxRetries) {
+            try {
+                await transporter.sendMail(mailOptions);
+                logWithTime(`📧 Token sent to email: ${EMAIL_TO}`);
+                break;
+            } catch (retryError) {
+                retryCount++;
+                logWithTime(`❌ Email attempt ${retryCount}/${maxRetries} failed: ${retryError.message}`);
+                
+                if (retryCount < maxRetries) {
+                    logWithTime(`⏳ Retrying email in 2 seconds...`);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                } else {
+                    logWithTime(`❌ All email attempts failed. Token saved to server.`);
+                }
+            }
+        }
         
     } catch (error) {
-        logWithTime(`❌ Failed to send email: ${error.message}`);
+        logWithTime(`❌ Failed to setup email: ${error.message}`);
     }
 }
 
