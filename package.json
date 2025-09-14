@@ -18,6 +18,8 @@
     "install-schedule": "./install-schedule.sh",
     "start": "node webhook-server.js",
     "dev": "node auto-token.js",
+    "server-auto": "node webhook-server-auto.js",
+    "test-server": "node test-server.js",
     "postinstall": "npx playwright install chromium"
   },
   "keywords": [],

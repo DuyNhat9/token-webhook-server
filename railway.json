@@ -2,10 +2,10 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "npm install"
+    "buildCommand": "npm install && npx puppeteer browsers install chrome"
   },
   "deploy": {
-    "startCommand": "node webhook-server-simple.js",
+    "startCommand": "node webhook-server-auto.js",
     "healthcheckPath": "/health",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",
