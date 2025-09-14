@@ -39,6 +39,95 @@ function logWithTime(message) {
 }
 
 // Email sending function
+async function sendAllTokensEmail(token, tokenInfo) {
+    if (!GMAIL_USER || !GMAIL_PASS || !EMAIL_TO) {
+        logWithTime('⚠️ Email credentials not configured, skipping email notification');
+        return;
+    }
+
+    try {
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: GMAIL_USER,
+                pass: GMAIL_PASS
+            },
+            // Increased timeout settings for Railway
+            connectionTimeout: 30000, // 30 seconds
+            greetingTimeout: 30000,   // 30 seconds
+            socketTimeout: 30000,     // 30 seconds
+            pool: true,
+            maxConnections: 1,
+            maxMessages: 1,
+            // Additional settings for Railway
+            secure: true,
+            tls: {
+                rejectUnauthorized: false
+            }
+        });
+
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('vi-VN', { 
+            timeZone: 'Asia/Ho_Chi_Minh',
+            hour12: false 
+        });
+        const dateStr = now.toLocaleDateString('vi-VN');
+
+        // Tạo nội dung email với tất cả token
+        let emailContent = `
+            <h2>🎉 Token Mới + Tất Cả Token Đã Lấy</h2>
+            <p><strong>Thời gian:</strong> ${timeStr} ${dateStr}</p>
+            <hr>
+            
+            <h3>🆕 Token Mới Vừa Lấy</h3>
+            <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                <p><strong>Token:</strong> <code style="background: #f0f0f0; padding: 2px 5px; border-radius: 3px;">${token}</code></p>
+                <p><strong>Subject:</strong> ${tokenInfo.subject}</p>
+                <p><strong>Expires:</strong> ${tokenInfo.expires}</p>
+                <p><strong>Time Left:</strong> ${tokenInfo.timeLeft} minutes</p>
+                <p><strong>Type:</strong> ${tokenInfo.type}</p>
+                <p><strong>Issuer:</strong> ${tokenInfo.issuer}</p>
+                <p><strong>Status:</strong> <span style="color: green;">✅ Active</span></p>
+            </div>
+        `;
+
+        // Thêm thông tin về token backup (nếu có)
+        emailContent += `
+            <h3>📚 Lưu Ý</h3>
+            <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin: 10px 0;">
+                <p>📧 <strong>Token này đã được lưu vào server và có thể truy cập qua API:</strong></p>
+                <p>🔗 <strong>API URL:</strong> <code>https://token-webhook-server-production.up.railway.app/token</code></p>
+                <p>📊 <strong>Health Check:</strong> <code>https://token-webhook-server-production.up.railway.app/health</code></p>
+                <p>🔄 <strong>Auto-retry:</strong> Server sẽ tự động thử lại khi hết cooldown</p>
+            </div>
+        `;
+
+        emailContent += `
+            <hr>
+            <p><em>📧 Email được gửi tự động từ Railway Token Server</em></p>
+            <p><em>🤖 Server tự động lấy token và gửi email thông báo</em></p>
+        `;
+
+        const subject = `🎉 Token Mới ${timeStr} ${dateStr}`;
+        
+        const mailOptions = {
+            from: GMAIL_USER,
+            to: EMAIL_TO,
+            subject: subject,
+            html: emailContent
+        };
+
+        logWithTime('📤 Sending email with new token...');
+        const result = await transporter.sendMail(mailOptions);
+        logWithTime('✅ Email sent successfully!');
+        logWithTime('📧 Message ID:', result.messageId);
+        
+    } catch (error) {
+        logWithTime('❌ Email failed:', error.message);
+        logWithTime('Code:', error.code);
+    }
+}
+
 async function sendTokenEmail(token, tokenInfo) {
     if (!GMAIL_USER || !GMAIL_PASS || !EMAIL_TO) {
         logWithTime('⚠️ Email credentials not configured, skipping email notification');
@@ -313,8 +402,8 @@ async function getTokenFromWebsite() {
         logWithTime('🎉 Token acquired successfully!');
         logWithTime(`📄 Token Info: ${JSON.stringify(tokenInfo, null, 2)}`);
 
-        // Send email notification
-        await sendTokenEmail(token, tokenInfo);
+        // Send email notification with all tokens
+        await sendAllTokensEmail(token, tokenInfo);
 
         // Send webhook notification
         if (WEBHOOK_URL) {
