@@ -53,17 +53,21 @@ async function sendAllTokensEmail(token, tokenInfo) {
                 pass: GMAIL_PASS
             },
             // Increased timeout settings for Railway
-            connectionTimeout: 30000, // 30 seconds
-            greetingTimeout: 30000,   // 30 seconds
-            socketTimeout: 30000,     // 30 seconds
+            connectionTimeout: 60000, // 60 seconds
+            greetingTimeout: 60000,   // 60 seconds
+            socketTimeout: 60000,     // 60 seconds
             pool: true,
             maxConnections: 1,
             maxMessages: 1,
             // Additional settings for Railway
             secure: true,
             tls: {
-                rejectUnauthorized: false
-            }
+                rejectUnauthorized: false,
+                ciphers: 'SSLv3'
+            },
+            // Retry settings
+            retryDelay: 5000,
+            retryAttempts: 3
         });
 
         const now = new Date();
@@ -147,6 +151,19 @@ async function sendAllTokensEmail(token, tokenInfo) {
     } catch (error) {
         logWithTime('❌ Email failed:', error.message);
         logWithTime('Code:', error.code);
+        logWithTime('Stack:', error.stack);
+        
+        // Retry email sending
+        logWithTime('🔄 Retrying email in 5 seconds...');
+        setTimeout(async () => {
+            try {
+                const retryResult = await transporter.sendMail(mailOptions);
+                logWithTime('✅ Email retry successful!');
+                logWithTime('📧 Message ID:', retryResult.messageId);
+            } catch (retryError) {
+                logWithTime('❌ Email retry failed:', retryError.message);
+            }
+        }, 5000);
     }
 }
 
@@ -164,17 +181,21 @@ async function sendTokenEmail(token, tokenInfo) {
                 pass: GMAIL_PASS
             },
             // Increased timeout settings for Railway
-            connectionTimeout: 30000, // 30 seconds
-            greetingTimeout: 30000,   // 30 seconds
-            socketTimeout: 30000,     // 30 seconds
+            connectionTimeout: 60000, // 60 seconds
+            greetingTimeout: 60000,   // 60 seconds
+            socketTimeout: 60000,     // 60 seconds
             pool: true,
             maxConnections: 1,
             maxMessages: 1,
             // Additional settings for Railway
             secure: true,
             tls: {
-                rejectUnauthorized: false
-            }
+                rejectUnauthorized: false,
+                ciphers: 'SSLv3'
+            },
+            // Retry settings
+            retryDelay: 5000,
+            retryAttempts: 3
         });
 
         const now = new Date();
