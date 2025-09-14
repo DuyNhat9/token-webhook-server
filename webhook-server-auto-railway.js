@@ -281,6 +281,9 @@ async function getTokenFromWebsite() {
             timeout: 30000 
         });
 
+        // Additional wait for page stability
+        await page.waitForTimeout(3000);
+
         // Wait for the form to load
         await page.waitForSelector('input[name="key"]', { timeout: 10000 });
         logWithTime('✅ Form loaded');
@@ -294,7 +297,14 @@ async function getTokenFromWebsite() {
         logWithTime('✅ Form submitted');
 
         // Wait for the page to load after submission
-        await page.waitForTimeout(3000);
+        await page.waitForTimeout(5000);
+        
+        // Additional wait for any dynamic content to stabilize
+        try {
+            await page.waitForLoadState('networkidle', { timeout: 10000 });
+        } catch (error) {
+            logWithTime('⚠️ Network idle wait timeout, continuing...');
+        }
 
         // Check for cooldown message with multiple patterns
         const cooldownText = await page.$eval('body', el => el.textContent).catch(() => '');
