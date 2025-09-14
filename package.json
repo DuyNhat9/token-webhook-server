@@ -16,10 +16,11 @@
     "request-token": "/opt/homebrew/opt/node@20/bin/node client-request.js",
     "monitor-network": "/opt/homebrew/opt/node@20/bin/node monitor-network.js",
     "install-schedule": "./install-schedule.sh",
-    "start": "node webhook-server-simple.js",
+    "start": "node webhook-server-auto-railway.js",
     "dev": "node auto-token.js",
     "server-auto": "node webhook-server-auto.js",
     "server-simple": "node webhook-server-simple.js",
+    "server-auto-railway": "node webhook-server-auto-railway.js",
     "test-server": "node test-server.js",
     "upload-token": "node upload-token.js",
     "postinstall": "npx playwright install chromium"
@@ -31,7 +32,8 @@
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.18.2",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "puppeteer": "^21.11.0"
   },
   "devDependencies": {
     "clipboardy": "^4.0.0",
