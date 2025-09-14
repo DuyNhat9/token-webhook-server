@@ -581,7 +581,7 @@ app.post('/force-email', async (req, res) => {
         }
         
         // Send email with current token and all backups
-        await sendAllTokensEmail(currentToken, currentTokenInfo);
+        await sendAllTokensEmail(currentToken, tokenInfo);
         res.json({ success: true, message: 'Email sent successfully' });
     } catch (error) {
         logWithTime(`❌ Force email failed: ${error.message}`);
