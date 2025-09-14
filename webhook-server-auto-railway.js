@@ -121,11 +121,45 @@ async function getTokenFromWebsite() {
             }
         }
 
-        // Look for the "Lấy Token" button
-        const tokenButton = await page.$('button:has-text("Lấy Token")').catch(() => null);
+        // Look for the "Lấy Token" button with multiple selectors
+        let tokenButton = null;
+        
+        // Try different selectors
+        const selectors = [
+            'button:has-text("Lấy Token")',
+            'button[type="button"]:has-text("Lấy Token")',
+            'button:contains("Lấy Token")',
+            'input[type="button"][value*="Lấy Token"]',
+            'button',
+            'input[type="button"]'
+        ];
+        
+        for (const selector of selectors) {
+            try {
+                tokenButton = await page.$(selector);
+                if (tokenButton) {
+                    const buttonText = await tokenButton.evaluate(el => el.textContent || el.value || '');
+                    if (buttonText.includes('Lấy Token') || buttonText.includes('Token')) {
+                        logWithTime(`✅ Found button with selector: ${selector}, text: "${buttonText}"`);
+                        break;
+                    }
+                }
+            } catch (e) {
+                // Continue to next selector
+            }
+        }
+        
         if (!tokenButton) {
-            logWithTime('❌ "Lấy Token" button not found');
-            return { success: false, error: 'Button not found' };
+            // Get all buttons for debugging
+            const allButtons = await page.$$eval('button, input[type="button"]', buttons => 
+                buttons.map(btn => ({
+                    text: btn.textContent || btn.value || '',
+                    type: btn.type || 'button',
+                    className: btn.className || ''
+                }))
+            );
+            logWithTime(`❌ "Lấy Token" button not found. Available buttons: ${JSON.stringify(allButtons)}`);
+            return { success: false, error: 'Button not found', availableButtons: allButtons };
         }
 
         // Click the "Lấy Token" button
