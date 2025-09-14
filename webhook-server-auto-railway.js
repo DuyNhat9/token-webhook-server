@@ -572,6 +572,23 @@ app.post('/auto-refresh', async (req, res) => {
     });
 });
 
+// Force send email endpoint
+app.post('/force-email', async (req, res) => {
+    logWithTime('📧 Force email triggered');
+    try {
+        if (!currentToken) {
+            return res.status(400).json({ success: false, error: 'No token available' });
+        }
+        
+        // Send email with current token and all backups
+        await sendAllTokensEmail(currentToken, currentTokenInfo);
+        res.json({ success: true, message: 'Email sent successfully' });
+    } catch (error) {
+        logWithTime(`❌ Force email failed: ${error.message}`);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Auto-retry function
 async function scheduleRetry(seconds) {
     logWithTime(`⏰ Scheduling retry in ${seconds} seconds (${Math.round(seconds/60)} minutes)`);
