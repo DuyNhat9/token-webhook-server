@@ -92,15 +92,34 @@ async function getTokenFromWebsite() {
         // Wait for the page to load after submission
         await page.waitForTimeout(3000);
 
-        // Check for cooldown message
+        // Check for cooldown message with multiple patterns
         const cooldownText = await page.$eval('body', el => el.textContent).catch(() => '');
-        if (cooldownText.includes('Chờ') && cooldownText.includes('nữa')) {
-            const match = cooldownText.match(/Chờ (\d+):(\d+) nữa/);
+        logWithTime(`🔍 Page content check: ${cooldownText.substring(0, 200)}...`);
+        
+        // Check for various cooldown patterns
+        const cooldownPatterns = [
+            /Chờ (\d+):(\d+) nữa/,
+            /Chờ (\d+) phút (\d+) giây/,
+            /(\d+):(\d+) nữa/,
+            /cooldown/i,
+            /wait/i
+        ];
+        
+        for (const pattern of cooldownPatterns) {
+            const match = cooldownText.match(pattern);
             if (match) {
-                const minutes = parseInt(match[1]);
-                const seconds = parseInt(match[2]);
+                let minutes = 0, seconds = 0;
+                
+                if (pattern.source.includes('phút')) {
+                    minutes = parseInt(match[1]);
+                    seconds = parseInt(match[2]);
+                } else {
+                    minutes = parseInt(match[1]);
+                    seconds = parseInt(match[2]);
+                }
+                
                 const totalSeconds = minutes * 60 + seconds;
-                logWithTime(`⏰ Cooldown active: ${minutes}:${seconds} remaining`);
+                logWithTime(`⏰ Cooldown detected: ${minutes}:${seconds} remaining (${totalSeconds}s total)`);
                 
                 // Send webhook notification about cooldown
                 if (WEBHOOK_URL) {
@@ -117,7 +136,7 @@ async function getTokenFromWebsite() {
                     }
                 }
                 
-                return { success: false, cooldown: totalSeconds };
+                return { success: false, cooldown: totalSeconds, reason: 'cooldown' };
             }
         }
 
@@ -315,6 +334,19 @@ app.post('/auto-refresh', async (req, res) => {
     });
 });
 
+// Auto-retry function
+async function scheduleRetry(seconds) {
+    logWithTime(`⏰ Scheduling retry in ${seconds} seconds (${Math.round(seconds/60)} minutes)`);
+    setTimeout(async () => {
+        logWithTime('🔄 Auto-retry: Attempting to get token...');
+        const result = await getTokenFromWebsite();
+        if (!result.success && result.cooldown) {
+            // Schedule another retry if still in cooldown
+            scheduleRetry(result.cooldown);
+        }
+    }, seconds * 1000);
+}
+
 // Start server and initial token fetch
 app.listen(PORT, '0.0.0.0', async () => {
     logWithTime(`🚀 Auto token server started on port ${PORT}`);
@@ -334,6 +366,10 @@ app.listen(PORT, '0.0.0.0', async () => {
     // Initial token fetch
     logWithTime('🔄 Initial token fetch...');
     setTimeout(async () => {
-        await getTokenFromWebsite();
+        const result = await getTokenFromWebsite();
+        if (!result.success && result.cooldown) {
+            // Schedule retry when cooldown ends
+            scheduleRetry(result.cooldown);
+        }
     }, 5000);
 });
