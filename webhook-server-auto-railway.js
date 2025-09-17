@@ -4,6 +4,7 @@ import cors from 'cors';
 import fetch from 'node-fetch';
 import puppeteer from 'puppeteer';
 import nodemailer from 'nodemailer';
+import fs from 'fs';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -504,6 +505,14 @@ app.post('/refresh', async (req, res) => {
             info: result.info
         });
     } else {
+        // When hitting cooldown, schedule a retry on the server so it auto-runs later
+        if (result.cooldown) {
+            try {
+                scheduleRetry(result.cooldown);
+            } catch (e) {
+                logWithTime(`⚠️ Failed to schedule retry after cooldown: ${e.message}`);
+            }
+        }
         res.status(500).json({
             success: false,
             message: 'Failed to refresh token',
@@ -523,6 +532,15 @@ app.post('/auto-refresh', async (req, res) => {
 
     logWithTime('🔄 Auto token refresh triggered');
     const result = await getTokenFromWebsite();
+
+    // If still in cooldown, schedule a retry on the server so it will auto-click later
+    if (!result.success && result.cooldown) {
+        try {
+            scheduleRetry(result.cooldown);
+        } catch (e) {
+            logWithTime(`⚠️ Failed to schedule retry after cooldown: ${e.message}`);
+        }
+    }
 
     res.json({
         success: result.success,
