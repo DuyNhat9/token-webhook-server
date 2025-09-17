@@ -535,23 +535,20 @@ app.post('/auto-refresh', async (req, res) => {
         return res.status(401).json({ error: 'Invalid secret' });
     }
 
-    logWithTime('🔄 Auto token refresh triggered');
-    const result = await getTokenFromWebsite();
+    // Return immediately to avoid 502 due to long-running Puppeteer work
+    logWithTime('🔄 Auto token refresh triggered (async)');
+    res.status(202).json({ success: true, message: 'Refresh started' });
 
-    // If still in cooldown, schedule a retry on the server so it will auto-click later
-    if (!result.success && result.cooldown) {
-        try {
-            scheduleRetry(result.cooldown);
-        } catch (e) {
-            logWithTime(`⚠️ Failed to schedule retry after cooldown: ${e.message}`);
+    setImmediate(async () => {
+        const result = await getTokenFromWebsite();
+        // If still in cooldown, schedule a retry on the server so it will auto-click later
+        if (!result.success && result.cooldown) {
+            try {
+                scheduleRetry(result.cooldown);
+            } catch (e) {
+                logWithTime(`⚠️ Failed to schedule retry after cooldown: ${e.message}`);
+            }
         }
-    }
-
-    res.json({
-        success: result.success,
-        message: result.success ? 'Token refreshed successfully' : 'Failed to refresh token',
-        error: result.error,
-        cooldown: result.cooldown
     });
 });
 
