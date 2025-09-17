@@ -552,22 +552,6 @@ app.post('/auto-refresh', async (req, res) => {
     });
 });
 
-// Force send Telegram endpoint
-app.post('/force-telegram', async (req, res) => {
-    logWithTime('📱 Force Telegram triggered');
-    try {
-        if (!currentToken) {
-            return res.status(400).json({ success: false, error: 'No token available' });
-        }
-        
-        // Send Telegram with current token and all backups
-        await sendAllTokensTelegram(currentToken, tokenInfo);
-        res.json({ success: true, message: 'Telegram sent successfully' });
-    } catch (error) {
-        logWithTime(`❌ Force Telegram failed: ${error.message}`);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
 
 // Auto-retry function
 async function scheduleRetry(seconds) {
@@ -591,7 +575,6 @@ app.listen(PORT, '0.0.0.0', async () => {
     logWithTime(`   GET  /status - Get server status`);
     logWithTime(`   POST /refresh - Force refresh token (requires API key)`);
     logWithTime(`   POST /auto-refresh - Auto refresh (for cron)`);
-    logWithTime(`   POST /force-telegram - Force send all tokens via Telegram`);
     
     logWithTime(`🔧 Environment variables:`);
     logWithTime(`   KEY_ID: ${KEY_ID ? 'Set' : 'Not set'}`);
