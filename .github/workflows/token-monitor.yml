@@ -1,54 +1,9 @@
-name: 🎫 Token Monitor
+name: DISABLED - Token Monitor
 
 on:
-  schedule:
-    # Chạy mỗi 30 phút
-    - cron: '*/30 * * * *'
-  workflow_dispatch:  # Cho phép chạy thủ công
+  workflow_dispatch: false
+  schedule: []
   push:
-    branches: [ main ]
+    branches: []
 
-jobs:
-  get-token:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-        
-      - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          
-      - name: 📦 Install dependencies
-        run: |
-          npm install
-          npx playwright install chromium
-          
-      - name: 🎯 Get Token
-        run: npm run get-token
-        env:
-          KEY_ID: ${{ secrets.KEY_ID }}
-          
-      - name: 📄 Show Token Info
-        run: npm run show-token
-        if: always()
-        
-      - name: 📤 Upload token artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: token-${{ github.run_number }}
-          path: token.txt
-          retention-days: 30
-        if: always()
-        
-      - name: 📢 Notify Discord (Optional)
-        if: always()
-        run: |
-          if [ -n "${{ secrets.DISCORD_WEBHOOK }}" ]; then
-            curl -H "Content-Type: application/json" \
-                 -d '{"content":"🎫 Token monitor completed: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}' \
-                 ${{ secrets.DISCORD_WEBHOOK }}
-          fi
+jobs: {}
