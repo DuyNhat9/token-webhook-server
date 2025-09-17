@@ -266,27 +266,47 @@ async function getTokenFromWebsite() {
         // Additional wait for page stability
         await page.waitForTimeout(3000);
 
-        // Wait for the form to load
+        // Wait for the form (new login page shows a password field)
         await page.waitForSelector('input[name="key"]', { timeout: 10000 });
         logWithTime('✅ Form loaded');
 
         // Fill the key input
-        await page.type('input[name="key"]', KEY_ID);
+        await page.evaluate((k) => {
+            const el = document.querySelector('input[name="key"]');
+            if (el) { el.value = ''; }
+        }, KEY_ID);
+        await page.type('input[name="key"]', KEY_ID, { delay: 10 });
         logWithTime('✅ Key filled');
 
-        // Submit the form
-        await page.click('button[type="submit"]');
-        logWithTime('✅ Form submitted');
+        // Submit the form ("Đăng nhập") and wait for navigation/network idle
+        const submitBtn = await page.$('button[type="submit"]');
+        if (submitBtn) {
+            await Promise.all([
+                submitBtn.click(),
+                page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {}),
+            ]);
+            logWithTime('✅ Form submitted');
+        }
 
         // Wait for the page to load after submission
         await page.waitForTimeout(5000);
-        
-        // Additional wait for any dynamic content to stabilize
+
+        // Additional wait for any dynamic content to stabilize (Puppeteer API)
         try {
-            await page.waitForLoadState('networkidle', { timeout: 10000 });
+            await page.waitForNetworkIdle({ timeout: 10000 });
         } catch (error) {
             logWithTime('⚠️ Network idle wait timeout, continuing...');
         }
+
+        // If still on /login, try navigating to /app explicitly
+        try {
+            const urlNow = page.url();
+            if (urlNow.includes('/login')) {
+                logWithTime('🔄 Still on login page, navigating to /app...');
+                await page.goto('https://tokencursor.io.vn/app', { waitUntil: 'networkidle2', timeout: 20000 }).catch(() => {});
+                await page.waitForTimeout(2000);
+            }
+        } catch (_) {}
 
         // Check for cooldown message with multiple patterns
         const cooldownText = await page.$eval('body', el => el.textContent).catch(() => '');
@@ -336,31 +356,16 @@ async function getTokenFromWebsite() {
             }
         }
 
-        // Look for the "Lấy Token" button with multiple selectors
+        // Look for the "Lấy Token" button with robust text scan
         let tokenButton = null;
-        
-        // Try different selectors
-        const selectors = [
-            'button:has-text("Lấy Token")',
-            'button[type="button"]:has-text("Lấy Token")',
-            'button:contains("Lấy Token")',
-            'input[type="button"][value*="Lấy Token"]',
-            'button',
-            'input[type="button"]'
-        ];
-        
-        for (const selector of selectors) {
-            try {
-                tokenButton = await page.$(selector);
-                if (tokenButton) {
-                    const buttonText = await tokenButton.evaluate(el => el.textContent || el.value || '');
-                    if (buttonText.includes('Lấy Token') || buttonText.includes('Token')) {
-                        logWithTime(`✅ Found button with selector: ${selector}, text: "${buttonText}"`);
-                        break;
-                    }
-                }
-            } catch (e) {
-                // Continue to next selector
+        // Prefer scanning all buttons to match by text
+        const allButtonsHandles = await page.$$('button, input[type="button"], a, div[role="button"]');
+        for (const h of allButtonsHandles) {
+            const txt = (await h.evaluate(el => (el.textContent || el.value || '').trim())).toLowerCase();
+            if (txt.includes('lấy token') || txt.includes('token')) {
+                tokenButton = h;
+                logWithTime(`✅ Found token button: "${txt}"`);
+                break;
             }
         }
         
