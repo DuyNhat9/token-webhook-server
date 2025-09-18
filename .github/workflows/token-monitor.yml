@@ -1,9 +1,0 @@
-name: DISABLED - Token Monitor
-
-on:
-  workflow_dispatch: false
-  schedule: []
-  push:
-    branches: []
-
-jobs: {}
