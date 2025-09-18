@@ -541,6 +541,11 @@ app.post('/auto-refresh', async (req, res) => {
 
     setImmediate(async () => {
         const result = await getTokenFromWebsite();
+        // If another run was already in progress, result may be undefined/null
+        if (!result) {
+            logWithTime('⏳ Token fetch already in progress (async trigger), will retry in 60s');
+            return scheduleRetry(60);
+        }
         // If still in cooldown, schedule a retry on the server so it will auto-click later
         if (!result.success && result.cooldown) {
             try {
@@ -559,6 +564,11 @@ async function scheduleRetry(seconds) {
     setTimeout(async () => {
         logWithTime('🔄 Auto-retry: Attempting to get token...');
         const result = await getTokenFromWebsite();
+        // Handle undefined (e.g., a concurrent run already in progress)
+        if (!result) {
+            logWithTime('⏳ Token fetch already in progress, scheduling short retry in 60s');
+            return scheduleRetry(60);
+        }
         if (!result.success && result.cooldown) {
             // Schedule another retry if still in cooldown
             scheduleRetry(result.cooldown);
