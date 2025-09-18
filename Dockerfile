@@ -26,14 +26,14 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (skip Playwright browser download during npm install to avoid failing postinstall)
+# Install dependencies (skip running package postinstall scripts)
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-RUN npm install
+RUN npm install --ignore-scripts
 
 # Best-effort retry to ensure Playwright browser gets installed even if network is flaky
 RUN for i in 1 2 3; do \
       npx --yes playwright install chromium && break || sleep 10; \
-    done
+    done || true
 
 # Copy source code
 COPY . .
