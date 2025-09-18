@@ -26,7 +26,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install dependencies (skip Playwright browser download during npm install to avoid failing postinstall)
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 RUN npm install
 
 # Best-effort retry to ensure Playwright browser gets installed even if network is flaky
