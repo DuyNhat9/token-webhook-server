@@ -53,4 +53,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # Start the application with dumb-init
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["node", "webhook-server-fixed.js"]
+CMD ["node", "simple-token-server.js"]
