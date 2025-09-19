@@ -72,6 +72,7 @@ async function getToken() {
         // Launch browser with optimized settings for Railway
         browser = await chromium.launch({ 
             headless: true,
+            executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
