@@ -18,4 +18,4 @@ EXPOSE 3000
 RUN echo "Dockerfile build completed successfully"
 
 # Start the application with debug output
-CMD ["sh", "-c", "echo 'Starting simple webhook server...' && node simple-webhook-server.js"]
+CMD ["node", "ultra-simple-server.js"]
