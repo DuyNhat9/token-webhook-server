@@ -2,8 +2,8 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY hello-world.js .
+COPY working-server.js .
 
 EXPOSE 3000
 
-CMD ["node", "hello-world.js"]
+CMD ["node", "working-server.js"]
