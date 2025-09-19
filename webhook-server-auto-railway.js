@@ -234,26 +234,52 @@ async function getTokenFromWebsite() {
         logWithTime('🔑 Getting token from website...');
         
         // Launch browser with optimized settings for Railway/Alpine
-        browser = await puppeteer.launch({
+        const isContainer = !!process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CONTAINERIZED === '1';
+        const commonArgs = isContainer ? [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding',
+            '--single-process',
+            '--disable-crash-reporter',
+            '--no-crashpad',
+            '--disable-features=CrashpadAPI',
+            '--crashpad-handler=/bin/true',
+            '--remote-debugging-pipe'
+        ] : [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage'
+        ];
+
+        const launchOptions = {
             headless: 'new',
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--disable-gpu',
-                '--disable-background-timer-throttling',
-                '--disable-backgrounding-occluded-windows',
-                '--disable-renderer-backgrounding',
-                '--single-process',
-                '--disable-crash-reporter',
-                '--no-crashpad',
-                '--remote-debugging-pipe'
-            ]
-        });
+            args: commonArgs
+        };
+
+        // Only set executablePath if explicitly provided by env (container)
+        if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+            launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+        }
+
+        try {
+            browser = await puppeteer.launch(launchOptions);
+        } catch (e) {
+            // Fallback: retry without executablePath in case of local dev (macOS)
+            if (launchOptions.executablePath) {
+                logWithTime(`⚠️ Launch with executablePath failed (${e.message}). Retrying without executablePath...`);
+                delete launchOptions.executablePath;
+                browser = await puppeteer.launch(launchOptions);
+            } else {
+                throw e;
+            }
+        }
 
         const page = await browser.newPage();
         

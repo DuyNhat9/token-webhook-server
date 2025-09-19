@@ -2,7 +2,7 @@ const https = require('https');
 
 const RAILWAY_URL = 'https://token-webhook-server-production.up.railway.app';
 const TELEGRAM_BOT_TOKEN = '8393051379:AAFjXE1Ww6iRjcldkkVfFzD6ySj36HlP7Zs';
-const TELEGRAM_CHAT_ID = 'YOUR_CHAT_ID'; // Thay bằng chat ID của bạn
+const TELEGRAM_CHAT_ID = '7489189724'; // Chat ID của David Tran
 
 // Function to make HTTPS request
 function makeRequest(url, options = {}) {

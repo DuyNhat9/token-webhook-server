@@ -1,7 +1,7 @@
 # Use Node.js 20 Alpine for smaller image
 FROM node:20-alpine
 
-# Install Puppeteer dependencies
+# Install Chromium and runtime deps
 RUN apk add --no-cache \
     chromium \
     nss \
@@ -11,12 +11,14 @@ RUN apk add --no-cache \
     ca-certificates \
     ttf-freefont \
     udev \
-    dumb-init
+    dumb-init \
+    bash
 
 # Set Puppeteer to use system Chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 ENV CHROME_BIN=/usr/bin/chromium-browser
+ENV CHROMIUM_PATH=/usr/bin/chromium-browser
 ENV NPM_CONFIG_FETCH_RETRIES=5 \
     NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=20000 \
     NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=120000 \
@@ -37,6 +39,11 @@ RUN npm install --ignore-scripts
 RUN for i in 1 2 3; do \
       npx --yes playwright install chromium && break || sleep 10; \
     done || true
+
+# Ensure chromium-browser path exists (Alpine uses /usr/bin/chromium)
+RUN if [ ! -e /usr/bin/chromium-browser ] && [ -e /usr/bin/chromium ]; then \
+      ln -sf /usr/bin/chromium /usr/bin/chromium-browser; \
+    fi
 
 # Copy source code
 COPY . .
