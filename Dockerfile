@@ -5,8 +5,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
-COPY ultra-simple-token.js .
+COPY real-token-server.js .
 
 EXPOSE 3000
 
-CMD ["node", "ultra-simple-token.js"]
+CMD ["node", "real-token-server.js"]
