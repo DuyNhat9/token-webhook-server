@@ -65,4 +65,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Start the application
 # Use dumb-init to handle zombie processes and signals properly
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["node", "webhook-server-auto-railway.js"]
+CMD ["node", "test-simple-server.js"]
