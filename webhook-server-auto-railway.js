@@ -233,9 +233,10 @@ async function getTokenFromWebsite() {
     try {
         logWithTime('🔑 Getting token from website...');
         
-        // Launch browser with optimized settings for Railway
+        // Launch browser with optimized settings for Railway/Alpine
         browser = await puppeteer.launch({
             headless: 'new',
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -246,7 +247,11 @@ async function getTokenFromWebsite() {
                 '--disable-gpu',
                 '--disable-background-timer-throttling',
                 '--disable-backgrounding-occluded-windows',
-                '--disable-renderer-backgrounding'
+                '--disable-renderer-backgrounding',
+                '--single-process',
+                '--disable-crash-reporter',
+                '--no-crashpad',
+                '--remote-debugging-pipe'
             ]
         });
 
