@@ -18,4 +18,4 @@ EXPOSE 3000
 RUN echo "Dockerfile build completed successfully"
 
 # Start the application with debug output
-CMD ["sh", "-c", "echo 'Starting minimal server...' && node minimal-server.js"]
+CMD ["sh", "-c", "echo 'Starting webhook server...' && node webhook-server-auto-railway.js"]
