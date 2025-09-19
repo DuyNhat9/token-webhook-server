@@ -9,4 +9,4 @@ COPY . .
 
 EXPOSE 3000
 
-CMD ["node", "test-simple-server.js"]
+CMD ["node", "minimal-server.js"]
