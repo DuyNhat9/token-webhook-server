@@ -12,7 +12,21 @@ RUN apk add --no-cache \
     ca-certificates \
     ttf-freefont \
     udev \
-    bash
+    bash \
+    xvfb \
+    dbus \
+    ttf-dejavu \
+    fontconfig \
+    mesa-gl \
+    mesa-dri-gallium \
+    libxcomposite \
+    libxdamage \
+    libxrandr \
+    libxss \
+    libgconf-2-4 \
+    libxkbcommon \
+    libgtk-3-0 \
+    libasound2
 
 # Set Playwright to use system Chromium
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
