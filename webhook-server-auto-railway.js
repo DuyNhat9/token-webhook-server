@@ -251,7 +251,9 @@ async function getTokenFromWebsite() {
             '--no-crashpad',
             '--disable-features=CrashpadAPI',
             '--crashpad-handler=/bin/true',
-            '--remote-debugging-pipe'
+            '--remote-debugging-pipe',
+            '--disable-web-security',
+            '--disable-features=VizDisplayCompositor'
         ] : [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -260,13 +262,9 @@ async function getTokenFromWebsite() {
 
         const launchOptions = {
             headless: 'new',
-            args: commonArgs
+            args: commonArgs,
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser'
         };
-
-        // Only set executablePath if explicitly provided by env (container)
-        if (process.env.PUPPETEER_EXECUTABLE_PATH) {
-            launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
-        }
 
         try {
             browser = await puppeteer.launch(launchOptions);

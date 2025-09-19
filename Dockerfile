@@ -12,7 +12,11 @@ RUN apk add --no-cache \
     ttf-freefont \
     udev \
     dumb-init \
-    bash
+    bash \
+    xvfb \
+    dbus \
+    ttf-dejavu-core \
+    fontconfig
 
 # Set Puppeteer to use system Chromium
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
@@ -59,6 +63,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD node -e "console.log('Health check passed')" || exit 1
 
 # Start the application
-# Use dumb-init to handle zombie processes and signals
+# Use dumb-init to handle zombie processes and signals properly
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 CMD ["node", "webhook-server-auto-railway.js"]

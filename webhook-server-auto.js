@@ -65,7 +65,7 @@ async function getToken() {
         logWithTime('🔑 Getting token...');
         
         const browser = await puppeteer.launch({ 
-            headless: true,
+            headless: 'new',
             executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
             args: [
                 '--no-sandbox', 
@@ -77,7 +77,15 @@ async function getToken() {
                 '--single-process',
                 '--disable-crash-reporter',
                 '--no-crashpad',
-                '--remote-debugging-pipe'
+                '--remote-debugging-pipe',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--no-zygote',
+                '--disable-background-timer-throttling',
+                '--disable-backgrounding-occluded-windows',
+                '--disable-renderer-backgrounding',
+                '--disable-features=CrashpadAPI',
+                '--crashpad-handler=/bin/true'
             ]
         });
         
