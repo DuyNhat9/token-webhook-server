@@ -15,7 +15,7 @@ RUN apk add --no-cache \
     bash \
     xvfb \
     dbus \
-    ttf-dejavu-core \
+    ttf-dejavu \
     fontconfig
 
 # Set Puppeteer to use system Chromium
