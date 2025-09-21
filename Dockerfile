@@ -39,4 +39,4 @@ EXPOSE 3000
 
 # Use dumb-init as entrypoint to handle zombie processes
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["node", "webhook-server-auto-railway.js"]
+CMD ["node", "real-token-server-minimal.js"]

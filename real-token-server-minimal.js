@@ -72,7 +72,7 @@ async function getToken() {
         // Try multiple browser launch strategies
         let launchSuccess = false;
         const launchStrategies = [
-            // Strategy 1: Minimal args
+            // Strategy 1: Enhanced args for Railway
             {
                 headless: true,
                 executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
@@ -83,7 +83,22 @@ async function getToken() {
                     '--disable-gpu',
                     '--single-process',
                     '--no-crashpad',
-                    '--disable-crash-reporter'
+                    '--disable-crash-reporter',
+                    '--disable-crashpad',
+                    '--remote-debugging-pipe',
+                    '--disable-extensions',
+                    '--disable-plugins',
+                    '--disable-images',
+                    '--disable-javascript',
+                    '--disable-default-apps',
+                    '--disable-web-security',
+                    '--disable-features=VizDisplayCompositor',
+                    '--disable-background-timer-throttling',
+                    '--disable-backgrounding-occluded-windows',
+                    '--disable-renderer-backgrounding',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote'
                 ]
             },
             // Strategy 2: Without executablePath
@@ -96,7 +111,9 @@ async function getToken() {
                     '--disable-gpu',
                     '--single-process',
                     '--no-crashpad',
-                    '--disable-crash-reporter'
+                    '--disable-crash-reporter',
+                    '--disable-crashpad',
+                    '--remote-debugging-pipe'
                 ]
             },
             // Strategy 3: Ultra minimal
