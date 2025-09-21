@@ -56,13 +56,24 @@ async function notify(message) {
 async function getToken() {
     const browser = await chromium.launch({ 
         headless: true,
+        executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
         args: [
             '--no-sandbox', 
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
             '--disable-gpu',
             '--disable-web-security',
-            '--disable-features=VizDisplayCompositor'
+            '--disable-features=VizDisplayCompositor',
+            '--single-process',
+            '--disable-crash-reporter',
+            '--no-crashpad',
+            '--disable-crashpad',
+            '--remote-debugging-pipe',
+            '--disable-extensions',
+            '--disable-plugins',
+            '--disable-images',
+            '--disable-javascript',
+            '--disable-default-apps'
         ]
     });
     const page = await browser.newPage();
@@ -277,13 +288,17 @@ app.post('/auto-refresh', async (req, res) => {
     });
 });
 
-// Install Playwright browsers on startup
-try {
-    logWithTime('🔧 Installing Playwright browsers...');
-    execSync('npx playwright install chromium', { stdio: 'inherit' });
-    logWithTime('✅ Playwright browsers installed');
-} catch (error) {
-    logWithTime(`⚠️  Failed to install Playwright browsers: ${error.message}`);
+// Skip Playwright browser installation in containerized environment
+if (!process.env.CONTAINERIZED) {
+    try {
+        logWithTime('🔧 Installing Playwright browsers...');
+        execSync('npx playwright install chromium', { stdio: 'inherit' });
+        logWithTime('✅ Playwright browsers installed');
+    } catch (error) {
+        logWithTime(`⚠️  Failed to install Playwright browsers: ${error.message}`);
+    }
+} else {
+    logWithTime('🔧 Skipping Playwright browser installation in containerized environment');
 }
 
 // Start server

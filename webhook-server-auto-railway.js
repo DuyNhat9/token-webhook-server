@@ -16,6 +16,8 @@ const WEBHOOK_URL = process.env.WEBHOOK_URL;
 const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_PASS = process.env.GMAIL_PASS;
 const EMAIL_TO = process.env.EMAIL_TO;
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 // Global variables
 let currentToken = null;
@@ -23,6 +25,7 @@ let tokenInfo = null;
 let lastUpdate = null;
 let serverStartTime = Date.now();
 let isGettingToken = false;
+let retryTimeout = null;
 
 // Middleware
 app.use(cors());
@@ -39,13 +42,10 @@ function logWithTime(message) {
     console.log(`[${timeStr} ${dateStr}] ${message}`);
 }
 
-// Telegram sending function
+// Enhanced Telegram sending function
 async function sendAllTokensTelegram(token, tokenInfo) {
-    const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8393051379:AAFjXE1Ww6iRjcldkkVfFzD6ySj36HlP7Zs';
-    const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-    
-    if (!TELEGRAM_CHAT_ID) {
-        logWithTime('⚠️ Telegram Chat ID not configured, skipping Telegram notification');
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+        logWithTime('⚠️ Telegram credentials not configured, skipping Telegram notification');
         return;
     }
 
@@ -57,74 +57,63 @@ async function sendAllTokensTelegram(token, tokenInfo) {
         });
         const dateStr = now.toLocaleDateString('vi-VN');
 
-        // Read backup tokens
-        let backupContent = '';
-        try {
-            backupContent = fs.readFileSync('tokens-backup.txt', 'utf8');
-        } catch (error) {
-            logWithTime('⚠️ No backup tokens file found');
-        }
+        // Create enhanced message
+        let message = `🎉 *TOKEN MỚI TỪ RAILWAY*\n\n`;
+        message += `📅 *Thời gian:* ${timeStr} ${dateStr}\n`;
+        message += `🔑 *Token:*\n\`\`\`${token}\`\`\`\n`;
+        message += `👤 *Subject:* ${tokenInfo.subject}\n`;
+        message += `⏰ *Expires:* ${tokenInfo.expires}\n`;
+        message += `⏱️ *Time Left:* ${Math.floor(tokenInfo.timeLeft / 3600)}h ${Math.floor((tokenInfo.timeLeft % 3600) / 60)}m\n`;
+        message += `🏷️ *Type:* ${tokenInfo.type}\n`;
+        message += `🏢 *Issuer:* ${tokenInfo.issuer}\n`;
+        message += `🤖 *From:* Railway Token Server`;
 
-        // Parse backup tokens
-        const backupTokens = [];
-        const sections = backupContent.split('=== TOKEN BACKUP');
-        for (let i = 1; i < sections.length; i++) {
-            const section = sections[i].trim();
-            if (section) {
-                const lines = section.split('\n');
-                const token = lines[0].replace('Token: ', '').trim();
-                const subject = lines[1].replace('Subject: ', '').trim();
-                const expires = lines[2].replace('Expires: ', '').trim();
-                const timeLeft = lines[3].replace('Time Left: ', '').replace(' seconds', '').trim();
-                const timestamp = lines[4].replace('Timestamp: ', '').trim();
-                
-                backupTokens.push({
-                    token,
-                    subject,
-                    expires,
-                    timeLeft: parseInt(timeLeft),
-                    timestamp
-                });
-            }
-        }
-
-        // Create simple message (like local script)
-        let message = `🎉 TOKEN MỚI TỪ RAILWAY\n\n`;
-        message += `📅 Thời gian: ${timeStr} ${dateStr}\n`;
-        message += `🔑 Token: ${token}\n`;
-        message += `👤 Subject: ${tokenInfo.subject}\n`;
-        message += `⏰ Expires: ${tokenInfo.expires}\n`;
-        message += `⏱️ Time Left: ${Math.floor(tokenInfo.timeLeft / 3600)}h ${Math.floor((tokenInfo.timeLeft % 3600) / 60)}m\n`;
-        message += `🤖 From: Railway Token Server`;
-
-        // Send to Telegram
-        logWithTime('📤 Sending all tokens to Telegram...');
+        // Send to Telegram with retry logic
+        logWithTime('📤 Sending token to Telegram...');
         const telegramMessage = {
             chat_id: TELEGRAM_CHAT_ID,
-            text: message
+            text: message,
+            parse_mode: 'Markdown'
         };
         
-        const telegramResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(telegramMessage)
-        });
+        let retryCount = 0;
+        const maxRetries = 3;
         
-        const telegramData = await telegramResponse.json();
-        
-        if (telegramData.ok) {
-            logWithTime('✅ All tokens sent to Telegram successfully!');
-            logWithTime('📱 Message ID:', telegramData.result.message_id);
-        } else {
-            logWithTime('❌ Telegram failed:', telegramData.description || 'Unknown error');
-            logWithTime('❌ Telegram response:', JSON.stringify(telegramData));
+        while (retryCount < maxRetries) {
+            try {
+                const telegramResponse = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(telegramMessage),
+                    timeout: 10000
+                });
+                
+                const telegramData = await telegramResponse.json();
+                
+                if (telegramData.ok) {
+                    logWithTime('✅ Token sent to Telegram successfully!');
+                    logWithTime('📱 Message ID:', telegramData.result.message_id);
+                    break;
+                } else {
+                    throw new Error(telegramData.description || 'Unknown error');
+                }
+            } catch (error) {
+                retryCount++;
+                logWithTime(`❌ Telegram attempt ${retryCount}/${maxRetries} failed: ${error.message}`);
+                
+                if (retryCount < maxRetries) {
+                    logWithTime(`⏳ Retrying Telegram in 2 seconds...`);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                } else {
+                    logWithTime(`❌ All Telegram attempts failed.`);
+                }
+            }
         }
         
     } catch (error) {
         logWithTime('❌ Telegram failed:', error.message);
-        logWithTime('❌ Telegram error stack:', error.stack);
     }
 }
 
@@ -220,7 +209,7 @@ async function sendTokenEmail(token, tokenInfo) {
     }
 }
 
-// Auto token fetching function
+// Enhanced token fetching function with better automation
 async function getTokenFromWebsite() {
     if (isGettingToken) {
         logWithTime('⏳ Token fetch already in progress, skipping...');
@@ -233,7 +222,7 @@ async function getTokenFromWebsite() {
     try {
         logWithTime('🔑 Getting token from website...');
         
-        // Launch browser with optimized settings for Railway/Alpine
+        // Enhanced browser launch options for Railway
         const isContainer = !!process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CONTAINERIZED === '1';
         const commonArgs = isContainer ? [
             '--no-sandbox',
@@ -253,7 +242,12 @@ async function getTokenFromWebsite() {
             '--crashpad-handler=/bin/true',
             '--remote-debugging-pipe',
             '--disable-web-security',
-            '--disable-features=VizDisplayCompositor'
+            '--disable-features=VizDisplayCompositor',
+            '--disable-extensions',
+            '--disable-plugins',
+            '--disable-images',
+            '--disable-javascript',
+            '--disable-default-apps'
         ] : [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -263,13 +257,14 @@ async function getTokenFromWebsite() {
         const launchOptions = {
             headless: 'new',
             args: commonArgs,
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser'
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
+            timeout: 30000
         };
 
         try {
             browser = await puppeteer.launch(launchOptions);
         } catch (e) {
-            // Fallback: retry without executablePath in case of local dev (macOS)
+            // Fallback: retry without executablePath
             if (launchOptions.executablePath) {
                 logWithTime(`⚠️ Launch with executablePath failed (${e.message}). Retrying without executablePath...`);
                 delete launchOptions.executablePath;
@@ -281,67 +276,81 @@ async function getTokenFromWebsite() {
 
         const page = await browser.newPage();
         
-        // Set viewport and user agent
+        // Enhanced page settings
         await page.setViewport({ width: 1280, height: 720 });
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        
+        // Set request interception to block unnecessary resources
+        await page.setRequestInterception(true);
+        page.on('request', (req) => {
+            const resourceType = req.resourceType();
+            if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
+                req.abort();
+            } else {
+                req.continue();
+            }
+        });
 
-        // Navigate to the website
+        // Navigate to the website with enhanced error handling
         logWithTime('🌐 Navigating to website...');
         await page.goto('https://tokencursor.io.vn/app', { 
             waitUntil: 'networkidle2',
             timeout: 30000 
         });
 
-        // Additional wait for page stability
+        // Wait for page stability
         await page.waitForTimeout(3000);
 
-        // Wait for the form (new login page shows a password field)
-        await page.waitForSelector('input[name="key"]', { timeout: 10000 });
+        // Wait for the form with enhanced selector detection
+        await page.waitForSelector('input[name="key"]', { timeout: 15000 });
         logWithTime('✅ Form loaded');
 
-        // Fill the key input
+        // Clear and fill the key input with enhanced typing
         await page.evaluate((k) => {
             const el = document.querySelector('input[name="key"]');
-            if (el) { el.value = ''; }
+            if (el) { 
+                el.value = '';
+                el.focus();
+            }
         }, KEY_ID);
-        await page.type('input[name="key"]', KEY_ID, { delay: 10 });
+        
+        await page.type('input[name="key"]', KEY_ID, { delay: 50 });
         logWithTime('✅ Key filled');
 
-        // Submit the form ("Đăng nhập") and wait for navigation/network idle
+        // Submit the form with enhanced click handling
         const submitBtn = await page.$('button[type="submit"]');
         if (submitBtn) {
             await Promise.all([
                 submitBtn.click(),
-                page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }).catch(() => {}),
+                page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 }).catch(() => {}),
             ]);
             logWithTime('✅ Form submitted');
         }
 
-        // Wait for the page to load after submission
+        // Wait for page to load after submission
         await page.waitForTimeout(5000);
 
-        // Additional wait for any dynamic content to stabilize (Puppeteer API)
+        // Enhanced network idle wait
         try {
-            await page.waitForNetworkIdle({ timeout: 10000 });
+            await page.waitForNetworkIdle({ timeout: 15000 });
         } catch (error) {
             logWithTime('⚠️ Network idle wait timeout, continuing...');
         }
 
-        // If still on /login, try navigating to /app explicitly
+        // Navigate to /app if still on /login
         try {
             const urlNow = page.url();
             if (urlNow.includes('/login')) {
                 logWithTime('🔄 Still on login page, navigating to /app...');
                 await page.goto('https://tokencursor.io.vn/app', { waitUntil: 'networkidle2', timeout: 20000 }).catch(() => {});
-                await page.waitForTimeout(2000);
+                await page.waitForTimeout(3000);
             }
         } catch (_) {}
 
-        // Check for cooldown message with multiple patterns
+        // Enhanced cooldown detection
         const cooldownText = await page.$eval('body', el => el.textContent).catch(() => '');
         logWithTime(`🔍 Page content check: ${cooldownText.substring(0, 200)}...`);
         
-        // Check for various cooldown patterns
         const cooldownPatterns = [
             /Chờ (\d+):(\d+) nữa/,
             /Chờ (\d+) phút (\d+) giây/,
@@ -385,9 +394,10 @@ async function getTokenFromWebsite() {
             }
         }
 
-        // Look for the "Lấy Token" button with robust text scan
+        // Enhanced button finding with multiple strategies
         let tokenButton = null;
-        // Prefer scanning all buttons to match by text
+        
+        // Strategy 1: Look for exact text match
         const allButtonsHandles = await page.$$('button, input[type="button"], a, div[role="button"]');
         for (const h of allButtonsHandles) {
             const txt = (await h.evaluate(el => (el.textContent || el.value || '').trim())).toLowerCase();
@@ -398,41 +408,57 @@ async function getTokenFromWebsite() {
             }
         }
         
+        // Strategy 2: Look for button with specific attributes
+        if (!tokenButton) {
+            tokenButton = await page.$('button[class*="token"], button[id*="token"], button[data-testid*="token"]');
+            if (tokenButton) {
+                logWithTime('✅ Found token button by attributes');
+            }
+        }
+        
         if (!tokenButton) {
             // Get all buttons for debugging
             const allButtons = await page.$$eval('button, input[type="button"]', buttons => 
                 buttons.map(btn => ({
                     text: btn.textContent || btn.value || '',
                     type: btn.type || 'button',
-                    className: btn.className || ''
+                    className: btn.className || '',
+                    id: btn.id || ''
                 }))
             );
             logWithTime(`❌ "Lấy Token" button not found. Available buttons: ${JSON.stringify(allButtons)}`);
             return { success: false, error: 'Button not found', availableButtons: allButtons };
         }
 
-        // Click the "Lấy Token" button
+        // Enhanced button clicking
         await tokenButton.click();
         logWithTime('🎯 Clicked "Lấy Token" button');
 
-        // Wait for token to appear
-        await page.waitForTimeout(2000);
-
-        // Extract token from page
-        const token = await page.evaluate(() => {
-            // Look for JWT token in various places
-            const textContent = document.body.textContent;
-            const jwtRegex = /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/;
-            const match = textContent.match(jwtRegex);
-            return match ? match[0] : null;
-        });
+        // Wait for token to appear with multiple attempts
+        let token = null;
+        for (let attempt = 0; attempt < 5; attempt++) {
+            await page.waitForTimeout(1000);
+            
+            token = await page.evaluate(() => {
+                const textContent = document.body.textContent;
+                const jwtRegex = /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/;
+                const match = textContent.match(jwtRegex);
+                return match ? match[0] : null;
+            });
+            
+            if (token && token.startsWith('eyJ')) {
+                break;
+            }
+            
+            logWithTime(`⏳ Token not found yet, attempt ${attempt + 1}/5...`);
+        }
 
         if (!token || !token.startsWith('eyJ')) {
-            logWithTime('❌ Token not found on page');
+            logWithTime('❌ Token not found on page after multiple attempts');
             return { success: false, error: 'Token not found' };
         }
 
-        // Decode token info
+        // Enhanced token decoding
         const parts = token.split('.');
         const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
         
@@ -450,7 +476,7 @@ async function getTokenFromWebsite() {
         logWithTime('🎉 Token acquired successfully!');
         logWithTime(`📄 Token Info: ${JSON.stringify(tokenInfo, null, 2)}`);
 
-        // Send Telegram notification with all tokens
+        // Send Telegram notification
         await sendAllTokensTelegram(token, tokenInfo);
 
         // Send webhook notification
@@ -488,7 +514,8 @@ app.get('/health', (req, res) => {
         uptime: (Date.now() - serverStartTime) / 1000,
         lastUpdate: lastUpdate,
         hasToken: !!currentToken,
-        isGettingToken: isGettingToken
+        isGettingToken: isGettingToken,
+        nextRetry: retryTimeout ? 'scheduled' : 'none'
     });
 });
 
@@ -516,7 +543,8 @@ app.get('/status', (req, res) => {
         hasToken: !!currentToken,
         lastUpdate: lastUpdate,
         tokenInfo: tokenInfo,
-        isGettingToken: isGettingToken
+        isGettingToken: isGettingToken,
+        nextRetry: retryTimeout ? 'scheduled' : 'none'
     });
 });
 
@@ -570,44 +598,53 @@ app.post('/auto-refresh', async (req, res) => {
 
     setImmediate(async () => {
         const result = await getTokenFromWebsite();
-        // If another run was already in progress, result may be undefined/null
+        
         if (!result) {
             logWithTime('⏳ Token fetch already in progress (async trigger), will retry in 60s');
             return scheduleRetry(60);
         }
-        // If still in cooldown, schedule a retry on the server so it will auto-click later
+        
         if (!result.success && result.cooldown) {
-            try {
-                scheduleRetry(result.cooldown);
-            } catch (e) {
-                logWithTime(`⚠️ Failed to schedule retry after cooldown: ${e.message}`);
-            }
+            scheduleRetry(result.cooldown);
+        } else if (!result.success) {
+            // If failed for other reasons, retry with exponential backoff
+            const retryDelay = Math.min(300, 60 * Math.pow(2, 0));
+            scheduleRetry(retryDelay);
         }
     });
 });
 
 
-// Auto-retry function
+// Enhanced retry function with exponential backoff
 async function scheduleRetry(seconds) {
+    if (retryTimeout) {
+        clearTimeout(retryTimeout);
+    }
+    
     logWithTime(`⏰ Scheduling retry in ${seconds} seconds (${Math.round(seconds/60)} minutes)`);
-    setTimeout(async () => {
+    retryTimeout = setTimeout(async () => {
         logWithTime('🔄 Auto-retry: Attempting to get token...');
         const result = await getTokenFromWebsite();
-        // Handle undefined (e.g., a concurrent run already in progress)
+        
         if (!result) {
             logWithTime('⏳ Token fetch already in progress, scheduling short retry in 60s');
             return scheduleRetry(60);
         }
+        
         if (!result.success && result.cooldown) {
             // Schedule another retry if still in cooldown
             scheduleRetry(result.cooldown);
+        } else if (!result.success) {
+            // If failed for other reasons, retry with exponential backoff
+            const retryDelay = Math.min(300, 60 * Math.pow(2, 0)); // Start with 1 minute, max 5 minutes
+            scheduleRetry(retryDelay);
         }
     }, seconds * 1000);
 }
 
 // Start server and initial token fetch
 app.listen(PORT, '0.0.0.0', async () => {
-    logWithTime(`🚀 Auto token server started on port ${PORT}`);
+    logWithTime(`🚀 Enhanced Railway token server started on port ${PORT}`);
     logWithTime(`📡 Endpoints:`);
     logWithTime(`   GET  /health - Health check`);
     logWithTime(`   GET  /token - Get current token`);
@@ -619,8 +656,8 @@ app.listen(PORT, '0.0.0.0', async () => {
     logWithTime(`   KEY_ID: ${KEY_ID ? 'Set' : 'Not set'}`);
     logWithTime(`   API_KEY: ${API_KEY ? 'Set' : 'Not set'}`);
     logWithTime(`   WEBHOOK_URL: ${WEBHOOK_URL ? 'Set' : 'Not set'}`);
-    logWithTime(`   TELEGRAM_BOT_TOKEN: ${process.env.TELEGRAM_BOT_TOKEN ? 'Set' : 'Not set'}`);
-    logWithTime(`   TELEGRAM_CHAT_ID: ${process.env.TELEGRAM_CHAT_ID ? 'Set' : 'Not set'}`);
+    logWithTime(`   TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN ? 'Set' : 'Not set'}`);
+    logWithTime(`   TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID ? 'Set' : 'Not set'}`);
     logWithTime(`   GMAIL_USER: ${GMAIL_USER ? 'Set' : 'Not set'}`);
     logWithTime(`   EMAIL_TO: ${EMAIL_TO ? 'Set' : 'Not set'}`);
     logWithTime(`   PORT: ${PORT}`);
@@ -630,8 +667,11 @@ app.listen(PORT, '0.0.0.0', async () => {
     setTimeout(async () => {
         const result = await getTokenFromWebsite();
         if (!result.success && result.cooldown) {
-            // Schedule retry when cooldown ends
             scheduleRetry(result.cooldown);
+        } else if (!result.success) {
+            // If failed for other reasons, retry with exponential backoff
+            const retryDelay = Math.min(300, 60 * Math.pow(2, 0));
+            scheduleRetry(retryDelay);
         }
     }, 5000);
 });

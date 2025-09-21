@@ -15,7 +15,8 @@ RUN apk add --no-cache \
     bash \
     dbus \
     ttf-dejavu \
-    fontconfig
+    fontconfig \
+    dumb-init
 
 # Set Playwright to use system Chromium
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
@@ -27,8 +28,15 @@ RUN npm install
 # Install Playwright browsers
 RUN npx playwright install chromium
 
-COPY real-token-server-minimal.js .
+# Set environment variables for containerized environment
+ENV CONTAINERIZED=1
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV CHROME_BIN=/usr/bin/chromium-browser
+
+COPY . .
 
 EXPOSE 3000
 
-CMD ["node", "real-token-server-minimal.js"]
+# Use dumb-init as entrypoint to handle zombie processes
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["node", "webhook-server-auto-railway.js"]
