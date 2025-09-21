@@ -182,7 +182,7 @@ async function getToken() {
         });
         
         // Wait for page to load
-        await page.waitForTimeout(3000);
+        await new Promise(resolve => setTimeout(resolve, 3000));
         
         // Fill key
         await page.type('input[name="key"]', KEY_ID);
@@ -194,7 +194,7 @@ async function getToken() {
         
         // Wait for redirect
         await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
-        await page.waitForTimeout(2000);
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Check for cooldown
         const bodyText = await page.evaluate(() => document.body.innerText);
@@ -225,7 +225,7 @@ async function getToken() {
         }
         
         // Wait for token to appear
-        await page.waitForTimeout(3000);
+        await new Promise(resolve => setTimeout(resolve, 3000));
         
         // Extract token
         const newBodyText = await page.evaluate(() => document.body.innerText);
