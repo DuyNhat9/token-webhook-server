@@ -177,7 +177,7 @@ async function getToken() {
         // Navigate to website
         logWithTime('🌐 Navigating to website...');
         await page.goto('https://tokencursor.io.vn/app', { 
-            waitUntil: 'networkidle',
+            waitUntil: 'domcontentloaded',
             timeout: 30000 
         });
         
@@ -193,7 +193,7 @@ async function getToken() {
         logWithTime('✅ Form submitted');
         
         // Wait for redirect
-        await page.waitForNavigation({ waitUntil: 'networkidle' });
+        await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
         await page.waitForTimeout(2000);
         
         // Check for cooldown
