@@ -16,14 +16,14 @@
     "request-token": "/opt/homebrew/opt/node@20/bin/node client-request.js",
     "monitor-network": "/opt/homebrew/opt/node@20/bin/node monitor-network.js",
     "install-schedule": "./install-schedule.sh",
-    "start": "node webhook-server-auto-railway.js",
+    "start": "node railway-token-server.js",
     "dev": "node auto-token.js",
     "server-auto": "node webhook-server-auto.js",
     "server-simple": "node webhook-server-simple.js",
-    "server-auto-railway": "node webhook-server-auto-railway.js",
+    "railway-server": "node railway-token-server.js",
     "test-server": "node test-server.js",
     "upload-token": "node upload-token.js",
-    "postinstall": "npx playwright install chromium"
+    "postinstall": "echo 'Using system Chromium - no browser installation needed'"
   },
   "keywords": [],
   "author": "",
