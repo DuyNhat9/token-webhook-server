@@ -56,7 +56,7 @@ async function sendToTelegram(message) {
     }
 }
 
-// Get real token function
+// Get real token function with minimal browser config
 async function getToken() {
     if (isGettingToken) {
         logWithTime('⏳ Token fetch already in progress, skipping...');
@@ -69,29 +69,66 @@ async function getToken() {
     try {
         logWithTime('🔑 Getting real token from website...');
         
-        // Launch browser with minimal settings for Railway
-        browser = await chromium.launch({ 
-            headless: true,
-            executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--single-process',
-                '--disable-crash-reporter',
-                '--no-crashpad',
-                '--disable-background-timer-throttling',
-                '--disable-backgrounding-occluded-windows',
-                '--disable-renderer-backgrounding',
-                '--no-first-run',
-                '--disable-extensions',
-                '--disable-default-apps',
-                '--disable-web-security',
-                '--disable-features=VizDisplayCompositor',
-                '--remote-debugging-pipe'
-            ]
-        });
+        // Try multiple browser launch strategies
+        let launchSuccess = false;
+        const launchStrategies = [
+            // Strategy 1: Minimal args
+            {
+                headless: true,
+                executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || '/usr/bin/chromium-browser',
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu',
+                    '--single-process',
+                    '--no-crashpad',
+                    '--disable-crash-reporter'
+                ]
+            },
+            // Strategy 2: Without executablePath
+            {
+                headless: true,
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu',
+                    '--single-process',
+                    '--no-crashpad',
+                    '--disable-crash-reporter'
+                ]
+            },
+            // Strategy 3: Ultra minimal
+            {
+                headless: true,
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage'
+                ]
+            }
+        ];
+
+        for (let i = 0; i < launchStrategies.length; i++) {
+            try {
+                logWithTime(`🔄 Trying browser launch strategy ${i + 1}...`);
+                browser = await chromium.launch(launchStrategies[i]);
+                launchSuccess = true;
+                logWithTime(`✅ Browser launched successfully with strategy ${i + 1}`);
+                break;
+            } catch (error) {
+                logWithTime(`❌ Strategy ${i + 1} failed: ${error.message}`);
+                if (browser) {
+                    try { await browser.close(); } catch (e) {}
+                    browser = null;
+                }
+            }
+        }
+
+        if (!launchSuccess) {
+            throw new Error('All browser launch strategies failed');
+        }
         
         const page = await browser.newPage();
         
@@ -205,7 +242,11 @@ async function getToken() {
         return { success: false, error: error.message };
     } finally {
         if (browser) {
-            await browser.close();
+            try {
+                await browser.close();
+            } catch (e) {
+                logWithTime('⚠️ Error closing browser: ' + e.message);
+            }
         }
         isGettingToken = false;
     }
@@ -247,7 +288,7 @@ app.get('/status', (req, res) => {
         lastUpdate: lastUpdate,
         tokenInfo: tokenInfo,
         isGettingToken: isGettingToken,
-        mode: 'real'
+        mode: 'real-minimal'
     });
 });
 
@@ -263,7 +304,7 @@ app.get('/token', (req, res) => {
         token: currentToken,
         info: tokenInfo,
         lastUpdate: lastUpdate,
-        mode: 'real'
+        mode: 'real-minimal'
     });
 });
 
@@ -292,7 +333,7 @@ app.post('/auto-refresh', async (req, res) => {
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
-    logWithTime(`🚀 Real token server started on port ${PORT}`);
+    logWithTime(`🚀 Real token server (minimal) started on port ${PORT}`);
     logWithTime(`📡 Endpoints:`);
     logWithTime(`   GET  /health - Health check`);
     logWithTime(`   GET  /token - Get current token`);
@@ -304,7 +345,7 @@ app.listen(PORT, '0.0.0.0', () => {
     logWithTime(`   TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN ? 'Set' : 'Not set'}`);
     logWithTime(`   TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID ? 'Set' : 'Not set'}`);
     logWithTime(`   PORT: ${PORT}`);
-    logWithTime(`🎯 Mode: REAL TOKEN`);
+    logWithTime(`🎯 Mode: REAL TOKEN (MINIMAL)`);
     
     // Initial token fetch
     logWithTime('🔄 Initial token fetch...');
