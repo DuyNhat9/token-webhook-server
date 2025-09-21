@@ -18,10 +18,48 @@ let tokenInfo = null;
 let lastUpdate = null;
 let serverStartTime = Date.now();
 let isGettingToken = false;
+let browserInstance = null;
+let consecutiveErrors = 0;
+let maxConsecutiveErrors = 5;
+
+// Process monitoring
+let lastHealthCheck = Date.now();
+let memoryUsage = process.memoryUsage();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Process monitoring function
+function monitorProcess() {
+    const now = Date.now();
+    const uptime = (now - serverStartTime) / 1000;
+    const currentMemory = process.memoryUsage();
+    
+    // Log memory usage every 5 minutes
+    if (now - lastHealthCheck > 300000) {
+        logWithTime(`📊 Memory Usage: RSS: ${Math.round(currentMemory.rss / 1024 / 1024)}MB, Heap: ${Math.round(currentMemory.heapUsed / 1024 / 1024)}MB`);
+        lastHealthCheck = now;
+        memoryUsage = currentMemory;
+    }
+    
+    // Force garbage collection if memory usage is high
+    if (currentMemory.heapUsed > 200 * 1024 * 1024) { // 200MB
+        logWithTime('🧹 High memory usage detected, forcing garbage collection...');
+        if (global.gc) {
+            global.gc();
+        }
+    }
+    
+    // Restart if too many consecutive errors
+    if (consecutiveErrors >= maxConsecutiveErrors) {
+        logWithTime('🚨 Too many consecutive errors, restarting server...');
+        process.exit(1);
+    }
+}
+
+// Start process monitoring
+setInterval(monitorProcess, 60000); // Check every minute
 
 // Logging function
 function logWithTime(message) {
@@ -58,6 +96,16 @@ async function sendToTelegram(message) {
 
 // Ultra-robust browser launch for Railway
 async function launchBrowser() {
+    // Close existing browser if any
+    if (browserInstance) {
+        try {
+            await browserInstance.close();
+            browserInstance = null;
+        } catch (e) {
+            logWithTime('⚠️ Error closing existing browser: ' + e.message);
+        }
+    }
+
     const strategies = [
         // Strategy 1: System Chromium with minimal args
         {
@@ -142,6 +190,7 @@ async function launchBrowser() {
             await testPage.goto('about:blank');
             await testPage.close();
             
+            browserInstance = browser;
             logWithTime(`✅ Browser launched successfully with strategy ${i + 1}`);
             return browser;
         } catch (error) {
@@ -282,10 +331,16 @@ async function getToken() {
         
         await sendToTelegram(message);
         
+        // Reset consecutive errors on success
+        consecutiveErrors = 0;
+        logWithTime('✅ Token fetch successful, consecutive errors reset');
+        
         return { success: true, token, info: parsedTokenInfo };
         
     } catch (error) {
         logWithTime(`❌ Error getting token: ${error.message}`);
+        consecutiveErrors++;
+        logWithTime(`⚠️ Consecutive errors: ${consecutiveErrors}/${maxConsecutiveErrors}`);
         return { success: false, error: error.message };
     } finally {
         if (page) {
@@ -325,12 +380,22 @@ async function autoRefresh() {
 
 // Routes
 app.get('/health', (req, res) => {
+    const currentMemory = process.memoryUsage();
     res.json({
         status: 'ok',
         uptime: (Date.now() - serverStartTime) / 1000,
         lastUpdate: lastUpdate,
         hasToken: !!currentToken,
-        isGettingToken: isGettingToken
+        isGettingToken: isGettingToken,
+        consecutiveErrors: consecutiveErrors,
+        maxConsecutiveErrors: maxConsecutiveErrors,
+        memoryUsage: {
+            rss: Math.round(currentMemory.rss / 1024 / 1024),
+            heapUsed: Math.round(currentMemory.heapUsed / 1024 / 1024),
+            heapTotal: Math.round(currentMemory.heapTotal / 1024 / 1024),
+            external: Math.round(currentMemory.external / 1024 / 1024)
+        },
+        browserInstance: !!browserInstance
     });
 });
 
@@ -383,6 +448,44 @@ app.post('/refresh', async (req, res) => {
 app.post('/auto-refresh', async (req, res) => {
     autoRefresh();
     res.json({ message: 'Auto refresh triggered' });
+});
+
+// Process signal handling for graceful shutdown
+process.on('SIGTERM', async () => {
+    logWithTime('🛑 SIGTERM received, shutting down gracefully...');
+    if (browserInstance) {
+        try {
+            await browserInstance.close();
+            logWithTime('✅ Browser closed gracefully');
+        } catch (e) {
+            logWithTime('⚠️ Error closing browser during shutdown: ' + e.message);
+        }
+    }
+    process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+    logWithTime('🛑 SIGINT received, shutting down gracefully...');
+    if (browserInstance) {
+        try {
+            await browserInstance.close();
+            logWithTime('✅ Browser closed gracefully');
+        } catch (e) {
+            logWithTime('⚠️ Error closing browser during shutdown: ' + e.message);
+        }
+    }
+    process.exit(0);
+});
+
+process.on('uncaughtException', (error) => {
+    logWithTime(`🚨 Uncaught Exception: ${error.message}`);
+    logWithTime(`Stack: ${error.stack}`);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    logWithTime(`🚨 Unhandled Rejection at: ${promise}, reason: ${reason}`);
+    process.exit(1);
 });
 
 // Start server
