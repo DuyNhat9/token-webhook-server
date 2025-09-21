@@ -29,10 +29,8 @@ RUN apk add --no-cache \
     libxfixes \
     libxrandr \
     libxrender \
-    libxss \
     libxtst \
     alsa-lib \
-    atk \
     cairo \
     cups-libs \
     dbus-glib \
