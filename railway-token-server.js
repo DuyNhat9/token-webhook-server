@@ -185,7 +185,7 @@ async function getToken() {
         await new Promise(resolve => setTimeout(resolve, 3000));
         
         // Fill key
-        await page.type('input[name="key"]', KEY_ID);
+        await page.fill('input[name="key"]', KEY_ID);
         logWithTime('✅ Key filled');
         
         // Submit form
@@ -193,7 +193,11 @@ async function getToken() {
         logWithTime('✅ Form submitted');
         
         // Wait for redirect
-        await page.waitForNavigation({ waitUntil: 'domcontentloaded' });
+        try {
+            await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 });
+        } catch (e) {
+            logWithTime('⚠️ Navigation timeout, continuing...');
+        }
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         // Check for cooldown
@@ -210,12 +214,16 @@ async function getToken() {
         let tokenButtonClicked = false;
         
         for (const button of buttons) {
-            const text = await page.evaluate(el => el.textContent, button);
-            if (text && text.trim() === 'Lấy Token') {
-                logWithTime('🎯 Clicking "Lấy Token" button...');
-                await button.click();
-                tokenButtonClicked = true;
-                break;
+            try {
+                const text = await page.evaluate(el => el.textContent, button);
+                if (text && text.trim() === 'Lấy Token') {
+                    logWithTime('🎯 Clicking "Lấy Token" button...');
+                    await button.click();
+                    tokenButtonClicked = true;
+                    break;
+                }
+            } catch (e) {
+                logWithTime('⚠️ Error checking button: ' + e.message);
             }
         }
         
