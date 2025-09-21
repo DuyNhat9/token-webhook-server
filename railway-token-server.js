@@ -233,8 +233,12 @@ async function getToken() {
         // Wait for page to load
         await new Promise(resolve => setTimeout(resolve, 3000));
         
+        // Debug: Log page content
+        const pageContent = await page.evaluate(() => document.body.innerText);
+        logWithTime('📄 Page content preview: ' + pageContent.substring(0, 200) + '...');
+        
         // Fill key
-        await page.fill('input[name="key"]', KEY_ID);
+        await page.type('input[name="key"]', KEY_ID);
         logWithTime('✅ Key filled');
         
         // Submit form
@@ -277,8 +281,15 @@ async function getToken() {
         }
         
         if (!tokenButtonClicked) {
-            logWithTime('❌ "Lấy Token" button not available');
-            return { success: false, error: 'Button not available' };
+            // Try alternative method
+            try {
+                await page.click('button:contains("Lấy Token")');
+                tokenButtonClicked = true;
+                logWithTime('🎯 Clicked "Lấy Token" button using alternative method');
+            } catch (e) {
+                logWithTime('❌ "Lấy Token" button not available');
+                return { success: false, error: 'Button not available' };
+            }
         }
         
         // Wait for token to appear
