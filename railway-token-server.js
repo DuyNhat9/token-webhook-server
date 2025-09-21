@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { chromium } from 'playwright';
+import puppeteer from 'puppeteer';
 import fetch from 'node-fetch';
 
 const app = express();
@@ -80,10 +80,43 @@ async function launchBrowser() {
                 '--disable-gpu',
                 '--single-process',
                 '--no-crashpad',
-                '--disable-crash-reporter'
+                '--disable-crash-reporter',
+                '--disable-web-security',
+                '--disable-features=VizDisplayCompositor',
+                '--disable-extensions',
+                '--disable-plugins',
+                '--disable-images',
+                '--disable-javascript',
+                '--disable-default-apps',
+                '--disable-background-timer-throttling',
+                '--disable-backgrounding-occluded-windows',
+                '--disable-renderer-backgrounding',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--disable-sync',
+                '--disable-software-rasterizer',
+                '--disable-canvas-aa',
+                '--disable-flash-3d',
+                '--disable-seccomp-filter-sandbox',
+                '--disable-site-isolation-trials',
+                '--disable-smooth-scrolling',
+                '--disable-system-font-check',
+                '--disable-threaded-animation',
+                '--disable-threaded-scrolling',
+                '--disable-v8-idle-tasks',
+                '--disable-zero-copy',
+                '--enable-webgl-image-chromium',
+                '--force-color-profile=srgb',
+                '--ignore-gpu-blocklist',
+                '--max-gum-fps=10',
+                '--mute-audio',
+                '--no-managed-user-data',
+                '--no-startup-window',
+                '--enable-logging=stderr',
+                '--v=1'
             ]
         },
-        // Strategy 3: Let Playwright find browser
+        // Strategy 3: Let Puppeteer find browser
         {
             headless: true,
             args: [
@@ -102,7 +135,13 @@ async function launchBrowser() {
     for (let i = 0; i < strategies.length; i++) {
         try {
             logWithTime(`🔄 Trying browser launch strategy ${i + 1}...`);
-            const browser = await chromium.launch(strategies[i]);
+            const browser = await puppeteer.launch(strategies[i]);
+            
+            // Test if browser is actually working
+            const testPage = await browser.newPage();
+            await testPage.goto('about:blank');
+            await testPage.close();
+            
             logWithTime(`✅ Browser launched successfully with strategy ${i + 1}`);
             return browser;
         } catch (error) {
@@ -132,7 +171,7 @@ async function getToken() {
         page = await browser.newPage();
         
         // Set minimal viewport and user agent
-        await page.setViewportSize({ width: 1280, height: 720 });
+        await page.setViewport({ width: 1280, height: 720 });
         await page.setUserAgent('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         
         // Navigate to website
@@ -146,7 +185,7 @@ async function getToken() {
         await page.waitForTimeout(3000);
         
         // Fill key
-        await page.fill('input[name="key"]', KEY_ID);
+        await page.type('input[name="key"]', KEY_ID);
         logWithTime('✅ Key filled');
         
         // Submit form
@@ -154,11 +193,11 @@ async function getToken() {
         logWithTime('✅ Form submitted');
         
         // Wait for redirect
-        await page.waitForLoadState('networkidle');
+        await page.waitForNavigation({ waitUntil: 'networkidle' });
         await page.waitForTimeout(2000);
         
         // Check for cooldown
-        const bodyText = await page.textContent('body');
+        const bodyText = await page.evaluate(() => document.body.innerText);
         const cooldownMatch = bodyText.match(/Chờ[:\s]*([^\n]+)/);
         
         if (cooldownMatch) {
@@ -167,11 +206,11 @@ async function getToken() {
         }
         
         // Find and click "Lấy Token" button
-        const buttons = await page.locator('button').all();
+        const buttons = await page.$$('button');
         let tokenButtonClicked = false;
         
         for (const button of buttons) {
-            const text = await button.textContent();
+            const text = await page.evaluate(el => el.textContent, button);
             if (text && text.trim() === 'Lấy Token') {
                 logWithTime('🎯 Clicking "Lấy Token" button...');
                 await button.click();
@@ -189,7 +228,7 @@ async function getToken() {
         await page.waitForTimeout(3000);
         
         // Extract token
-        const newBodyText = await page.textContent('body');
+        const newBodyText = await page.evaluate(() => document.body.innerText);
         const jwtMatch = newBodyText.match(/eyJ[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+/);
         
         if (!jwtMatch) {
@@ -295,7 +334,7 @@ app.get('/status', (req, res) => {
         lastUpdate: lastUpdate,
         tokenInfo: tokenInfo,
         isGettingToken: isGettingToken,
-        mode: 'ultra-robust'
+        mode: 'ultra-robust-puppeteer'
     });
 });
 
@@ -311,7 +350,7 @@ app.get('/token', (req, res) => {
         token: currentToken,
         info: tokenInfo,
         lastUpdate: lastUpdate,
-        mode: 'ultra-robust'
+        mode: 'ultra-robust-puppeteer'
     });
 });
 
@@ -340,7 +379,7 @@ app.post('/auto-refresh', async (req, res) => {
 
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
-    logWithTime(`🚀 Ultra Robust Token Server started on port ${PORT}`);
+    logWithTime(`🚀 Ultra Robust Token Server (Puppeteer) started on port ${PORT}`);
     logWithTime(`📡 Endpoints:`);
     logWithTime(`   GET  /health - Health check`);
     logWithTime(`   GET  /token - Get current token`);
@@ -352,7 +391,7 @@ app.listen(PORT, '0.0.0.0', () => {
     logWithTime(`   TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN ? 'Set' : 'Not set'}`);
     logWithTime(`   TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID ? 'Set' : 'Not set'}`);
     logWithTime(`   PORT: ${PORT}`);
-    logWithTime(`🎯 Mode: ULTRA ROBUST TOKEN SERVER`);
+    logWithTime(`🎯 Mode: ULTRA ROBUST TOKEN SERVER (PUPPETEER)`);
     
     // Initial token fetch
     logWithTime('🔄 Initial token fetch...');
