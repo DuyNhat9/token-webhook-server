@@ -237,6 +237,89 @@ async function getToken() {
         const pageContent = await page.evaluate(() => document.body.innerText);
         logWithTime('📄 Page content preview: ' + pageContent.substring(0, 200) + '...');
         
+        // Check and close notification modal if present (BEFORE filling form)
+        try {
+            logWithTime('🔍 Checking for initial notification modal...');
+            
+            // Wait a bit for modal to appear
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Try to find and close the modal using multiple strategies
+            const modalStrategies = [
+                // Strategy 1: Look for "Đã hiểu" button (most likely)
+                async () => {
+                    const buttons = await page.$$('button');
+                    for (const btn of buttons) {
+                        const text = await page.evaluate(el => el.textContent, btn);
+                        if (text && (text.includes('Đã hiểu') || text.includes('Understood'))) {
+                            await btn.click();
+                            logWithTime('✅ Clicked "Đã hiểu" button');
+                            return true;
+                        }
+                    }
+                    return false;
+                },
+                // Strategy 2: Look for close button with X
+                async () => {
+                    const buttons = await page.$$('button');
+                    for (const btn of buttons) {
+                        const text = await page.evaluate(el => el.textContent, btn);
+                        if (text && (text.includes('X') || text.includes('×') || text.includes('✕'))) {
+                            await btn.click();
+                            logWithTime('✅ Clicked X button');
+                            return true;
+                        }
+                    }
+                    return false;
+                },
+                // Strategy 3: Try alternative selectors
+                async () => {
+                    const selectors = [
+                        '.modal button[type="button"]',
+                        '.notification-modal button',
+                        '[role="dialog"] button',
+                        '.popup button'
+                    ];
+                    
+                    for (const selector of selectors) {
+                        try {
+                            const button = await page.$(selector);
+                            if (button) {
+                                await button.click();
+                                logWithTime(`✅ Clicked modal button with selector: ${selector}`);
+                                return true;
+                            }
+                        } catch (e) {
+                            // Continue to next selector
+                        }
+                    }
+                    return false;
+                }
+            ];
+            
+            let modalClosed = false;
+            for (const strategy of modalStrategies) {
+                try {
+                    if (await strategy()) {
+                        modalClosed = true;
+                        break;
+                    }
+                } catch (e) {
+                    logWithTime(`⚠️ Modal strategy failed: ${e.message}`);
+                }
+            }
+            
+            if (modalClosed) {
+                logWithTime('✅ Modal closed successfully');
+                // Wait a bit for modal to disappear
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            } else {
+                logWithTime('⚠️ Could not find or close modal, continuing...');
+            }
+        } catch (e) {
+            logWithTime(`⚠️ Error handling modal: ${e.message}`);
+        }
+        
         // Fill key
         await page.type('input[name="key"]', KEY_ID);
         logWithTime('✅ Key filled');
@@ -253,7 +336,7 @@ async function getToken() {
         }
         await new Promise(resolve => setTimeout(resolve, 2000));
         
-        // Check and close notification modal if present
+        // Check and close notification modal if present (AFTER form submission)
         try {
             logWithTime('🔍 Checking for notification modal...');
             

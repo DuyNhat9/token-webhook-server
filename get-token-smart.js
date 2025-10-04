@@ -27,54 +27,87 @@ async function main() {
         await page.waitForLoadState('networkidle');
         await page.waitForTimeout(2000);
         
-        // Check and close notification modal if present
+        // Check and close notification modal if present (BEFORE filling form)
         try {
-            console.log('🔍 Checking for notification modal...');
+            console.log('🔍 Checking for initial notification modal...');
             
             // Wait a bit for modal to appear
-            await page.waitForTimeout(1000);
+            await page.waitForTimeout(2000);
             
-            // Try to find and close the modal
-            const modalCloseButton = await page.$('button[aria-label="Close"], .modal button:has-text("X"), .modal .close, [data-testid="close-modal"]');
-            const modalUnderstandButton = await page.$('button:has-text("Đã hiểu"), button:has-text("Understood")');
-            
-            if (modalCloseButton) {
-                console.log('✅ Found modal close button, clicking...');
-                await modalCloseButton.click();
-                await page.waitForTimeout(500);
-            } else if (modalUnderstandButton) {
-                console.log('✅ Found modal "Đã hiểu" button, clicking...');
-                await modalUnderstandButton.click();
-                await page.waitForTimeout(500);
-            } else {
-                // Try alternative selectors for modal
-                const modalSelectors = [
-                    '.modal button[type="button"]',
-                    '.notification-modal button',
-                    '[role="dialog"] button',
-                    '.popup button',
-                    'button:has-text("×")',
-                    'button:has-text("✕")'
-                ];
-                
-                for (const selector of modalSelectors) {
-                    try {
-                        const button = await page.$(selector);
-                        if (button) {
-                            console.log(`✅ Found modal button with selector: ${selector}`);
-                            await button.click();
-                            await page.waitForTimeout(500);
-                            break;
+            // Try to find and close the modal using multiple strategies
+            const modalStrategies = [
+                // Strategy 1: Look for "Đã hiểu" button (most likely)
+                async () => {
+                    const buttons = await page.$$('button');
+                    for (const btn of buttons) {
+                        const text = await page.evaluate(el => el.textContent, btn);
+                        if (text && (text.includes('Đã hiểu') || text.includes('Understood'))) {
+                            await btn.click();
+                            console.log('✅ Clicked "Đã hiểu" button');
+                            return true;
                         }
-                    } catch (e) {
-                        // Continue to next selector
                     }
+                    return false;
+                },
+                // Strategy 2: Look for close button with X
+                async () => {
+                    const buttons = await page.$$('button');
+                    for (const btn of buttons) {
+                        const text = await page.evaluate(el => el.textContent, btn);
+                        if (text && (text.includes('X') || text.includes('×') || text.includes('✕'))) {
+                            await btn.click();
+                            console.log('✅ Clicked X button');
+                            return true;
+                        }
+                    }
+                    return false;
+                },
+                // Strategy 3: Try alternative selectors
+                async () => {
+                    const selectors = [
+                        '.modal button[type="button"]',
+                        '.notification-modal button',
+                        '[role="dialog"] button',
+                        '.popup button'
+                    ];
+                    
+                    for (const selector of selectors) {
+                        try {
+                            const button = await page.$(selector);
+                            if (button) {
+                                await button.click();
+                                console.log(`✅ Clicked modal button with selector: ${selector}`);
+                                return true;
+                            }
+                        } catch (e) {
+                            // Continue to next selector
+                        }
+                    }
+                    return false;
+                }
+            ];
+            
+            let modalClosed = false;
+            for (const strategy of modalStrategies) {
+                try {
+                    if (await strategy()) {
+                        modalClosed = true;
+                        break;
+                    }
+                } catch (e) {
+                    console.log(`⚠️ Modal strategy failed: ${e.message}`);
                 }
             }
             
-            console.log('✅ Modal handling completed');
-        } catch (error) {
-            console.log('⚠️ No modal found or error handling modal:', error.message);
+            if (modalClosed) {
+                console.log('✅ Modal closed successfully');
+                // Wait a bit for modal to disappear
+                await page.waitForTimeout(1000);
+            } else {
+                console.log('⚠️ Could not find or close modal, continuing...');
+            }
+        } catch (e) {
+            console.log(`⚠️ Error handling modal: ${e.message}`);
         }
         
         // Get page content to check status
