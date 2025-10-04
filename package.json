@@ -1,0 +1,45 @@
+{
+  "name": "k",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "get-token": "/opt/homebrew/opt/node@20/bin/node get-token-smart.js",
+    "get-token:headful": "HEADFUL=1 /opt/homebrew/opt/node@20/bin/node get-token-smart.js",
+    "check-token": "/opt/homebrew/opt/node@20/bin/node check-token.js",
+    "check-status": "/opt/homebrew/opt/node@20/bin/node check-status.js",
+    "show-token": "/opt/homebrew/opt/node@20/bin/node show-current-token.js",
+    "auto-token": "/opt/homebrew/opt/node@20/bin/node auto-token.js",
+    "server-token": "/opt/homebrew/opt/node@20/bin/node server-token.js",
+    "webhook-server": "/opt/homebrew/opt/node@20/bin/node webhook-server.js",
+    "request-token": "/opt/homebrew/opt/node@20/bin/node client-request.js",
+    "monitor-network": "/opt/homebrew/opt/node@20/bin/node monitor-network.js",
+    "install-schedule": "./install-schedule.sh",
+    "start": "node railway-token-server.js",
+    "dev": "node auto-token.js",
+    "server-auto": "node webhook-server-auto.js",
+    "server-simple": "node webhook-server-simple.js",
+    "railway-server": "node railway-token-server.js",
+    "test-server": "node test-server.js",
+    "test-modal": "node test-modal-handling.js",
+    "upload-token": "node upload-token.js",
+    "postinstall": "echo 'Using system Chromium - no browser installation needed'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^6.9.8",
+    "puppeteer": "^24.10.2"
+  },
+  "devDependencies": {
+    "clipboardy": "^4.0.0",
+    "dotenv": "^17.2.2",
+    "playwright": "^1.55.0"
+  }
+}
