@@ -12,9 +12,9 @@ const KEY_ID = process.env.KEY_ID || 'KEY-8GFN9U3L0U';
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-// Use system Chromium for faster builds
-process.env.PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = 'true';
-process.env.PUPPETEER_EXECUTABLE_PATH = '/usr/bin/chromium-browser';
+// Force Puppeteer to download its own Chromium
+process.env.PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = 'false';
+delete process.env.PUPPETEER_EXECUTABLE_PATH;
 
 // Global variables
 let currentToken = null;
