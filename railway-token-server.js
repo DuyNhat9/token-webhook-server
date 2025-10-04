@@ -12,6 +12,9 @@ const KEY_ID = process.env.KEY_ID || 'KEY-8GFN9U3L0U';
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
+// Force Puppeteer to download Chromium if system one fails
+process.env.PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = 'false';
+
 // Global variables
 let currentToken = null;
 let tokenInfo = null;
@@ -107,7 +110,16 @@ async function launchBrowser() {
     }
 
     const strategies = [
-        // Strategy 1: System Chromium with minimal args
+        // Strategy 1: Let Puppeteer download and use its own Chromium (most reliable)
+        {
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage'
+            ]
+        },
+        // Strategy 2: System Chromium with minimal args
         {
             executablePath: '/usr/bin/chromium-browser',
             headless: true,
@@ -117,7 +129,7 @@ async function launchBrowser() {
                 '--disable-dev-shm-usage'
             ]
         },
-        // Strategy 1.5: Try different Chromium paths
+        // Strategy 3: Try different Chromium paths
         {
             executablePath: '/usr/bin/chromium',
             headless: true,
