@@ -8,7 +8,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Environment variables
-const KEY_ID = process.env.KEY_ID;
+const KEY_ID = process.env.KEY_ID || 'KEY-8GFN9U3L0U';
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
@@ -264,19 +264,25 @@ async function getToken() {
             const modalStrategies = [
                 // Strategy 1: Look for close button with X
                 async () => {
-                    const closeBtn = await page.$('button[aria-label="Close"], .modal button:has-text("X"), .modal .close, [data-testid="close-modal"]');
-                    if (closeBtn) {
-                        await closeBtn.click();
-                        return true;
+                    const buttons = await page.$$('button');
+                    for (const btn of buttons) {
+                        const text = await page.evaluate(el => el.textContent, btn);
+                        if (text && (text.includes('X') || text.includes('×') || text.includes('✕'))) {
+                            await btn.click();
+                            return true;
+                        }
                     }
                     return false;
                 },
                 // Strategy 2: Look for "Đã hiểu" button
                 async () => {
-                    const understandBtn = await page.$('button:has-text("Đã hiểu"), button:has-text("Understood")');
-                    if (understandBtn) {
-                        await understandBtn.click();
-                        return true;
+                    const buttons = await page.$$('button');
+                    for (const btn of buttons) {
+                        const text = await page.evaluate(el => el.textContent, btn);
+                        if (text && (text.includes('Đã hiểu') || text.includes('Understood'))) {
+                            await btn.click();
+                            return true;
+                        }
                     }
                     return false;
                 },

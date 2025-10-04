@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 import fs from 'fs';
 import clipboard from 'clipboardy';
 
-const KEY_ID = process.env.KEY_ID || 'F24AAF7D-8CE8-4425-99A2-1C89CD24D954';
+const KEY_ID = process.env.KEY_ID || 'KEY-8GFN9U3L0U';
 const OUTPUT_FILE = process.env.OUTPUT_FILE || 'token.txt';
 
 async function main() {

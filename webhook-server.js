@@ -6,7 +6,7 @@ import fs from 'fs';
 import express from 'express';
 import cors from 'cors';
 
-const KEY_ID = process.env.KEY_ID || 'F24AAF7D-8CE8-4425-99A2-1C89CD24D954';
+const KEY_ID = process.env.KEY_ID || 'KEY-8GFN9U3L0U';
 const WEBHOOK_URL = process.env.WEBHOOK_URL; // Discord/Slack webhook
 const API_KEY = process.env.API_KEY || 'your-secret-api-key'; // Bảo mật API
 const PORT = process.env.PORT || 3000;
