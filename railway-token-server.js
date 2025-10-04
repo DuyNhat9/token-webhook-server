@@ -117,6 +117,16 @@ async function launchBrowser() {
                 '--disable-dev-shm-usage'
             ]
         },
+        // Strategy 1.5: Try different Chromium paths
+        {
+            executablePath: '/usr/bin/chromium',
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage'
+            ]
+        },
         // Strategy 2: System Chromium with more stability flags
         {
             executablePath: '/usr/bin/chromium-browser',
@@ -173,7 +183,17 @@ async function launchBrowser() {
                 '--disable-dev-shm-usage'
             ]
         },
-        // Strategy 4: Ultra minimal
+        // Strategy 4: Try Google Chrome
+        {
+            executablePath: '/usr/bin/google-chrome',
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage'
+            ]
+        },
+        // Strategy 5: Ultra minimal (let Puppeteer download Chromium)
         {
             headless: true,
             args: ['--no-sandbox']
