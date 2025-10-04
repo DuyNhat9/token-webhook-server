@@ -3,7 +3,7 @@ nixPkgs = ["nodejs_18", "npm-9_x"]
 
 [phases.install]
 cmds = [
-  "apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont dumb-init",
+  "apt-get update && apt-get install -y --no-install-recommends chromium-browser",
   "npm ci --only=production"
 ]
 
