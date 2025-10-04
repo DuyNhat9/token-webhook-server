@@ -3,9 +3,8 @@ nixPkgs = ["nodejs_18", "npm-9_x"]
 
 [phases.install]
 cmds = [
-  "apt-get update",
-  "apt-get install -y chromium-browser",
-  "npm install --only=production"
+  "apk add --no-cache chromium nss freetype harfbuzz ca-certificates ttf-freefont dumb-init",
+  "npm ci --only=production"
 ]
 
 [phases.build]
@@ -15,5 +14,6 @@ cmds = ["echo 'Build completed'"]
 cmd = "node railway-token-server.js"
 
 [variables]
-PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "false"
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
+PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium-browser"
 CONTAINERIZED = "1"
