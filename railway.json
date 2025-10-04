@@ -1,13 +1,5 @@
 {
-  "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "DOCKERFILE"
-  },
-  "deploy": {
-    "startCommand": "node railway-token-server.js",
-    "healthcheckPath": "/health",
-    "healthcheckTimeout": 300,
-    "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 10
+    "builder": "nixpacks"
   }
 }

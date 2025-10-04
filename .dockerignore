@@ -1,2 +1,4 @@
-# Ignore all files to force Railway to use nixpacks.toml
-*
+# Force Railway to use nixpacks.toml instead of Docker
+node_modules
+.git
+*.log
