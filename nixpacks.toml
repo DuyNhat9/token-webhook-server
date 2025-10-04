@@ -15,6 +15,5 @@ cmds = ["echo 'Build completed'"]
 cmd = "node railway-token-server.js"
 
 [variables]
-PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
-PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium-browser"
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "false"
 CONTAINERIZED = "1"

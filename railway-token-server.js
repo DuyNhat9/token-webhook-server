@@ -14,6 +14,8 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 // Force Puppeteer to download Chromium if system one fails
 process.env.PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = 'false';
+// Clear any existing executable path to force download
+delete process.env.PUPPETEER_EXECUTABLE_PATH;
 
 // Global variables
 let currentToken = null;
