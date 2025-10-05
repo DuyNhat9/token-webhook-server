@@ -10,8 +10,8 @@ cmds = ["npm install --omit=dev", "mkdir -p /tmp/puppeteer-cache"]
 cmds = ["echo 'Smart Token Server build completed'", "echo 'Puppeteer will download Chromium on first run'"]
 
 [start]
-cmd = "node server.js"
+cmd = "node smart-token-server.js"
 
-[variables]
+[env]
 PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "false"
 PUPPETEER_CACHE_DIR = "/tmp/puppeteer-cache"

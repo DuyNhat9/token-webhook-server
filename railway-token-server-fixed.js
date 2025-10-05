@@ -1,6 +1,6 @@
-const express = require('express');
-const puppeteer = require('puppeteer');
-const cors = require('cors');
+import express from 'express';
+import puppeteer from 'puppeteer';
+import cors from 'cors';
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -298,7 +298,7 @@ async function autoRefresh() {
         // Send notification before restart
         if (TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID) {
             try {
-                const fetch = require('node-fetch');
+                const fetch = (await import('node-fetch')).default;
                 await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -387,7 +387,7 @@ app.post('/send-token', async (req, res) => {
     }
     
     try {
-        const fetch = require('node-fetch');
+        const fetch = (await import('node-fetch')).default;
         const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
