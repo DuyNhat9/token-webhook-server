@@ -4,12 +4,14 @@ async function testSmartSystem() {
     console.log('🧠 Testing Smart Token System...');
     
     const browser = await puppeteer.launch({
-        headless: false, // Show browser for inspection
-        slowMo: 2000,   // Slow down to see what's happening
+        headless: true, // Faster in headless
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage'
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--disable-web-security',
+            '--single-process'
         ]
     });
     
@@ -18,12 +20,12 @@ async function testSmartSystem() {
     try {
         console.log('📡 Navigating to website...');
         await page.goto('https://key-token.com/', {
-            waitUntil: 'networkidle0',
-            timeout: 30000
+            waitUntil: 'domcontentloaded', // Faster than networkidle0
+            timeout: 15000 // Reduced timeout
         });
         
         console.log('⏳ Waiting for page to load...');
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Reduced wait time
         
         // UI Detection patterns
         const UI_PATTERNS = {

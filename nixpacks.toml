@@ -1,18 +1,17 @@
-providers = ["nodejs"]
+providers = ["python"]
 
 [phases.setup]
-nixPkgs = ["chromium", "libnss3", "libatk1.0-0", "libatk-bridge2.0-0", "libcups2", "libgbm1", "libasound2t64", "libpangocairo-1.0-0", "libxss1", "libgtk-3-0", "libxshmfence1", "libglu1"]
+nixPkgs = ["chromium", "chromedriver", "libnss3", "libatk1.0-0", "libatk-bridge2.0-0", "libcups2", "libgbm1", "libasound2t64", "libpangocairo-1.0-0", "libxss1", "libgtk-3-0", "libxshmfence1", "libglu1"]
 
 [phases.install]
-cmds = ["npm install --omit=dev --no-optional", "mkdir -p /tmp/puppeteer-cache"]
+cmds = ["pip install -r requirements.txt"]
 
 [phases.build]
-cmds = ["echo 'Build completed - skipping Chromium download'", "echo 'Chromium will be downloaded on first run'"]
+cmds = ["echo 'Python build completed'"]
 
 [start]
-cmd = "node smart-token-server.js"
+cmd = "python3 smart-token-server.py"
 
 [variables]
-PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
-PUPPETEER_CACHE_DIR = "/tmp/puppeteer-cache"
-PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium"
+CHROME_BIN = "/usr/bin/chromium"
+CHROMEDRIVER_PATH = "/usr/bin/chromedriver"
