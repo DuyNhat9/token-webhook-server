@@ -11,6 +11,7 @@ from datetime import datetime
 from flask import Flask, jsonify, request
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -56,9 +57,10 @@ class SmartTokenServer:
         chrome_options.binary_location = chrome_bin
         
         try:
+            service = Service(executable_path=chromedriver_path)
             driver = webdriver.Chrome(
                 options=chrome_options,
-                service_args=[f'--chromedriver-path={chromedriver_path}']
+                service=service
             )
             driver.set_page_load_timeout(30)
             driver.implicitly_wait(10)
