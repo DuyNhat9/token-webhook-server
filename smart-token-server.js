@@ -88,9 +88,10 @@ function logWithTime(message) {
 // Browser launch function
 async function launchBrowser() {
     const strategies = [
-        // Strategy 1: Let Puppeteer download Chromium
+        // Strategy 1: Use system Chromium (fastest)
         {
             headless: true,
+            executablePath: '/usr/bin/chromium',
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
