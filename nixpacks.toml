@@ -1,7 +1,7 @@
 providers = ["python"]
 
 [phases.setup]
-nixPkgs = ["python3", "python3Packages.pip", "chromium", "chromedriver"]
+nixPkgs = ["python3", "pip", "chromium", "chromedriver"]
 
 [phases.install]
 cmds = ["python3 -m pip install -r requirements.txt"]
