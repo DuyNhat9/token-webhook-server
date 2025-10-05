@@ -13,17 +13,18 @@ providers = ["nodejs"]
 nixPkgs = ["chromium", "libnss3", "libatk1.0-0", "libatk-bridge2.0-0", "libcups2", "libgbm1", "libasound2t64", "libpangocairo-1.0-0", "libxss1", "libgtk-3-0", "libxshmfence1", "libglu1"]
 
 [phases.install]
-cmds = ["npm install --omit=dev", "mkdir -p /tmp/puppeteer-cache"]
+cmds = ["npm install --omit=dev --no-optional", "mkdir -p /tmp/puppeteer-cache"]
 
 [phases.build]
-cmds = ["echo 'Smart Token Server build completed'", "echo 'Puppeteer will download Chromium on first run'"]
+cmds = ["echo 'Build completed - skipping Chromium download'", "echo 'Chromium will be downloaded on first run'"]
 
 [start]
 cmd = "node smart-token-server.js"
 
-[env]
-PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "false"
+[variables]
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
 PUPPETEER_CACHE_DIR = "/tmp/puppeteer-cache"
+PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium"
 EOF
 
 # Update railway.json
