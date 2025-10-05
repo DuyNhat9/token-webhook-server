@@ -1,10 +1,10 @@
 providers = ["python"]
 
 [phases.setup]
-nixPkgs = ["chromium", "chromedriver"]
+nixPkgs = ["python3", "chromium", "chromedriver"]
 
 [phases.install]
-cmds = ["PYTHON3_BIN=$(find /nix/store -name python3 -type f | head -1) && export PATH=$(dirname $PYTHON3_BIN):$PATH && python3 -m pip install -r requirements.txt"]
+cmds = ["python3 -m pip install -r requirements.txt"]
 
 [phases.build]
 cmds = ["echo 'Python build completed'"]
