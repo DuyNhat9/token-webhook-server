@@ -57,7 +57,7 @@ class SmartTokenServer:
         
         try:
             driver = webdriver.Chrome(
-                chrome_options=chrome_options,
+                options=chrome_options,
                 service_args=[f'--chromedriver-path={chromedriver_path}']
             )
             driver.set_page_load_timeout(30)
