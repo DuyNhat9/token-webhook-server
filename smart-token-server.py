@@ -7,6 +7,7 @@ import os
 import time
 import json
 import sys
+import requests
 from datetime import datetime
 from flask import Flask, jsonify, request
 from selenium import webdriver
@@ -33,6 +34,40 @@ class SmartTokenServer:
         time_str = now.strftime('%H:%M:%S')
         date_str = now.strftime('%d/%m/%Y')
         print(f'[{time_str} {date_str}] {message}')
+    
+    def send_telegram_message(self, token):
+        """Send token to Telegram"""
+        try:
+            bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+            chat_id = os.getenv('TELEGRAM_CHAT_ID')
+            
+            if not bot_token or not chat_id:
+                self.log_with_time("⚠️ Telegram credentials not configured")
+                return False
+            
+            message = f"🎉 **Token mới được lấy thành công!**\n\n"
+            message += f"🔑 **Token:** `{token}`\n"
+            message += f"⏰ **Thời gian:** {datetime.now().strftime('%H:%M:%S %d/%m/%Y')}\n"
+            message += f"🌐 **Server:** Railway Smart Token Server"
+            
+            url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+            data = {
+                'chat_id': chat_id,
+                'text': message,
+                'parse_mode': 'Markdown'
+            }
+            
+            response = requests.post(url, data=data, timeout=10)
+            if response.status_code == 200:
+                self.log_with_time("✅ Token sent to Telegram successfully")
+                return True
+            else:
+                self.log_with_time(f"❌ Failed to send to Telegram: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            self.log_with_time(f"❌ Telegram error: {str(e)}")
+            return False
     
     def setup_browser(self):
         """Setup Chrome browser for Railway"""
@@ -244,6 +279,9 @@ class SmartTokenServer:
                 self.token_info = result
                 self.last_update = time.time()
                 self.log_with_time(f'✅ Token fetched successfully: {result["token"][:30]}...')
+                
+                # Send to Telegram
+                self.send_telegram_message(result['token'])
             
             return result
                 
@@ -314,6 +352,48 @@ def health_check():
         'status': 'healthy',
         'timestamp': datetime.now().isoformat()
     })
+
+@app.route('/telegram/config', methods=['POST'])
+def config_telegram():
+    """Configure Telegram webhook"""
+    try:
+        data = request.get_json()
+        bot_token = data.get('bot_token')
+        chat_id = data.get('chat_id')
+        
+        if not bot_token or not chat_id:
+            return jsonify({'success': False, 'error': 'bot_token and chat_id are required'}), 400
+        
+        # Test Telegram connection
+        url = f"https://api.telegram.org/bot{bot_token}/getMe"
+        response = requests.get(url, timeout=10)
+        
+        if response.status_code == 200:
+            # Set environment variables (for this session)
+            os.environ['TELEGRAM_BOT_TOKEN'] = bot_token
+            os.environ['TELEGRAM_CHAT_ID'] = chat_id
+            
+            return jsonify({
+                'success': True,
+                'message': 'Telegram configured successfully',
+                'bot_info': response.json()['result']
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Invalid bot token'}), 400
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/telegram/test', methods=['POST'])
+def test_telegram():
+    """Test Telegram webhook"""
+    try:
+        if server.send_telegram_message("🧪 Test message from Smart Token Server"):
+            return jsonify({'success': True, 'message': 'Test message sent successfully'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to send test message'}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 3000))
