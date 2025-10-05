@@ -8,6 +8,7 @@ import time
 import json
 import sys
 import requests
+import threading
 from datetime import datetime
 from flask import Flask, jsonify, request
 from selenium import webdriver
@@ -27,6 +28,9 @@ class SmartTokenServer:
         self.token_info = None
         self.last_update = 0
         self.is_fetching = False
+        self.auto_refresh = False
+        self.refresh_interval = 300  # 5 minutes default
+        self.refresh_thread = None
         
     def log_with_time(self, message):
         """Log with timestamp"""
@@ -68,6 +72,52 @@ class SmartTokenServer:
         except Exception as e:
             self.log_with_time(f"❌ Telegram error: {str(e)}")
             return False
+    
+    def auto_refresh_worker(self):
+        """Background worker for auto-refresh"""
+        while self.auto_refresh:
+            try:
+                self.log_with_time("🔄 Auto-refresh: Attempting to fetch token...")
+                result = self.fetch_token()
+                
+                if result['success']:
+                    self.log_with_time("✅ Auto-refresh: Token fetched successfully!")
+                else:
+                    if result.get('cooldown'):
+                        self.log_with_time("⏰ Auto-refresh: Key on cooldown, waiting...")
+                    else:
+                        self.log_with_time(f"❌ Auto-refresh failed: {result.get('error', 'Unknown')}")
+                
+                # Wait for next refresh
+                self.log_with_time(f"⏳ Auto-refresh: Waiting {self.refresh_interval} seconds...")
+                time.sleep(self.refresh_interval)
+                
+            except Exception as e:
+                self.log_with_time(f"❌ Auto-refresh error: {e}")
+                time.sleep(60)  # Wait 1 minute on error
+    
+    def start_auto_refresh(self, interval=300):
+        """Start auto-refresh in background"""
+        if self.auto_refresh:
+            self.log_with_time("⚠️ Auto-refresh already running")
+            return False
+        
+        self.auto_refresh = True
+        self.refresh_interval = interval
+        self.refresh_thread = threading.Thread(target=self.auto_refresh_worker, daemon=True)
+        self.refresh_thread.start()
+        self.log_with_time(f"🚀 Auto-refresh started (interval: {interval}s)")
+        return True
+    
+    def stop_auto_refresh(self):
+        """Stop auto-refresh"""
+        if not self.auto_refresh:
+            self.log_with_time("⚠️ Auto-refresh not running")
+            return False
+        
+        self.auto_refresh = False
+        self.log_with_time("🛑 Auto-refresh stopped")
+        return True
     
     def setup_browser(self):
         """Setup Chrome browser for Railway"""
@@ -394,6 +444,45 @@ def test_telegram():
             return jsonify({'success': False, 'error': 'Failed to send test message'}), 500
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/auto-refresh', methods=['POST'])
+def start_auto_refresh():
+    """Start auto-refresh"""
+    try:
+        data = request.get_json() or {}
+        interval = data.get('interval', 300)  # Default 5 minutes
+        
+        if server.start_auto_refresh(interval):
+            return jsonify({
+                'success': True, 
+                'message': f'Auto-refresh started with {interval}s interval',
+                'interval': interval
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Auto-refresh already running'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/auto-refresh', methods=['DELETE'])
+def stop_auto_refresh():
+    """Stop auto-refresh"""
+    try:
+        if server.stop_auto_refresh():
+            return jsonify({'success': True, 'message': 'Auto-refresh stopped'})
+        else:
+            return jsonify({'success': False, 'error': 'Auto-refresh not running'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/auto-refresh/status', methods=['GET'])
+def auto_refresh_status():
+    """Get auto-refresh status"""
+    return jsonify({
+        'success': True,
+        'auto_refresh': server.auto_refresh,
+        'interval': server.refresh_interval,
+        'is_running': server.auto_refresh
+    })
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 3000))
