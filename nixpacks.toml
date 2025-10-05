@@ -12,6 +12,6 @@ cmds = ["echo 'Smart Token Server build completed'", "echo 'Puppeteer will downl
 [start]
 cmd = "node smart-token-server.js"
 
-[env]
+[variables]
 PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "false"
 PUPPETEER_CACHE_DIR = "/tmp/puppeteer-cache"
