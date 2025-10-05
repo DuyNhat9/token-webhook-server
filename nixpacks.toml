@@ -1,7 +1,7 @@
 providers = ["python"]
 
 [phases.setup]
-nixPkgs = ["chromium", "chromedriver", "libnss3", "libatk1.0-0", "libatk-bridge2.0-0", "libcups2", "libgbm1", "libasound2t64", "libpangocairo-1.0-0", "libxss1", "libgtk-3-0", "libxshmfence1", "libglu1"]
+nixPkgs = ["chromium", "chromedriver"]
 
 [phases.install]
 cmds = ["pip install -r requirements.txt"]
