@@ -497,4 +497,17 @@ if __name__ == '__main__':
     else:
         print(f'⚠️ Startup test failed: {result.get("error", "Unknown error")}')
     
+    # Auto-start auto-refresh if enabled via environment
+    auto_refresh_env = os.getenv('AUTO_REFRESH', 'false').lower()
+    if auto_refresh_env in ('1', 'true', 'yes', 'on'):
+        try:
+            interval_env = int(os.getenv('AUTO_REFRESH_INTERVAL', '300'))
+        except ValueError:
+            interval_env = 300
+        started = server.start_auto_refresh(interval=interval_env)
+        if started:
+            print(f'🔄 Auto-refresh enabled (interval: {interval_env}s)')
+        else:
+            print('⚠️ Auto-refresh was already running')
+    
     app.run(host='0.0.0.0', port=port, debug=False)
