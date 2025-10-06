@@ -1,8 +1,5 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -30,8 +27,8 @@ function logWithTime(message) {
     console.log(`[${timeStr} ${dateStr}] ${message}`);
 }
 
-// Simple browser launch with unique user-data-dir
-async function launchBrowser(userDataDir) {
+// Simple browser launch
+async function launchBrowser() {
     try {
         logWithTime('🔄 Launching browser...');
         const browser = await puppeteer.launch({
@@ -42,8 +39,7 @@ async function launchBrowser(userDataDir) {
                 '--disable-dev-shm-usage',
                 '--disable-gpu',
                 '--disable-web-security',
-                '--single-process',
-                `--user-data-dir=${userDataDir}`
+                '--single-process'
             ]
         });
         logWithTime('✅ Browser launched successfully');
@@ -187,14 +183,11 @@ async function getTokenFromWebsite() {
     
     isFetching = true;
     let browser = null;
-    let userDataDir = null;
     
     try {
         logWithTime('🔑 Getting token from website...');
         
-        // create unique temp user-data-dir to avoid session lock conflicts
-        userDataDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'puppeteer-profile-'));
-        browser = await launchBrowser(userDataDir);
+        browser = await launchBrowser();
         const page = await browser.newPage();
         
         // Set viewport
@@ -275,14 +268,6 @@ async function getTokenFromWebsite() {
         if (browser) {
             await browser.close();
         }
-        if (userDataDir) {
-            try {
-                await fs.promises.rm(userDataDir, { recursive: true, force: true });
-                logWithTime('🧹 Cleaned temporary user-data-dir');
-            } catch (e) {
-                logWithTime(`⚠️ Failed to clean user-data-dir: ${e.message}`);
-            }
-        }
     }
 }
 
@@ -357,13 +342,10 @@ app.post('/refresh', async (req, res) => {
 });
 
 app.post('/auto-refresh', async (req, res) => {
-    const secret = (req.body && req.body.secret) || req.query.secret;
-    if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
-        return res.status(401).json({ success: false, error: 'Invalid secret' });
-    }
     if (isFetching) {
         return res.status(429).json({ success: false, message: 'Already fetching' });
     }
+    
     try {
         await autoRefresh();
         res.json({ success: true, message: 'Auto refresh completed' });
