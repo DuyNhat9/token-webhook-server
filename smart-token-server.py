@@ -129,7 +129,8 @@ class SmartTokenServer:
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--disable-web-security")
         chrome_options.add_argument("--window-size=1920,1080")
-        chrome_options.add_argument("--headless")  # Headless for server
+        # Use modern headless mode for Chrome 109+
+        chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--disable-extensions")
         chrome_options.add_argument("--disable-plugins")
         chrome_options.add_argument("--disable-images")
@@ -141,28 +142,38 @@ class SmartTokenServer:
         # Stability flags for minimal container environments (Railway/Alpine)
         chrome_options.add_argument("--no-first-run")
         chrome_options.add_argument("--no-zygote")
-        chrome_options.add_argument("--single-process")
+        # Avoid --single-process with Selenium; it can crash recent Chrome builds
+        # Keep DevTools available to prevent disconnection in headless
+        chrome_options.add_argument("--remote-debugging-port=9222")
         chrome_options.add_argument("--disable-background-timer-throttling")
         chrome_options.add_argument("--disable-backgrounding-occluded-windows")
         chrome_options.add_argument("--disable-renderer-backgrounding")
         
-        # Use system Chrome/Chromium
-        chrome_bin = os.getenv('CHROME_BIN', '/usr/bin/chromium')
-        chromedriver_path = os.getenv('CHROMEDRIVER_PATH', '/usr/bin/chromedriver')
-        
-        chrome_options.binary_location = chrome_bin
-        
+        # Prefer Selenium Manager to pick a matching ChromeDriver
+        # Only set binary if explicitly provided
+        chrome_bin = os.getenv('CHROME_BIN')
+        if chrome_bin:
+            chrome_options.binary_location = chrome_bin
+
         try:
-            service = Service(executable_path=chromedriver_path)
-            driver = webdriver.Chrome(
-                options=chrome_options,
-                service=service
-            )
+            driver = webdriver.Chrome(options=chrome_options)
             driver.set_page_load_timeout(30)
             driver.implicitly_wait(10)
             self.log_with_time('✅ Browser ready')
             return driver
         except Exception as e:
+            # Fallback: use explicit chromedriver if provided
+            try:
+                chromedriver_path = os.getenv('CHROMEDRIVER_PATH')
+                if chromedriver_path:
+                    service = Service(executable_path=chromedriver_path)
+                    driver = webdriver.Chrome(options=chrome_options, service=service)
+                    driver.set_page_load_timeout(30)
+                    driver.implicitly_wait(10)
+                    self.log_with_time('✅ Browser ready (fallback driver)')
+                    return driver
+            except Exception as e2:
+                self.log_with_time(f'❌ Browser setup failed (fallback): {e2}')
             self.log_with_time(f'❌ Browser setup failed: {e}')
             return None
     
