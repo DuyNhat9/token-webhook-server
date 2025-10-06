@@ -145,6 +145,7 @@ class SmartTokenServer:
         # Avoid --single-process with Selenium; it can crash recent Chrome builds
         # Keep DevTools available to prevent disconnection in headless
         chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--remote-debugging-address=0.0.0.0")
         chrome_options.add_argument("--disable-background-timer-throttling")
         chrome_options.add_argument("--disable-backgrounding-occluded-windows")
         chrome_options.add_argument("--disable-renderer-backgrounding")
@@ -155,10 +156,17 @@ class SmartTokenServer:
         if chrome_bin:
             chrome_options.binary_location = chrome_bin
 
+        def _launch_driver():
+            d = webdriver.Chrome(options=chrome_options)
+            d.set_page_load_timeout(45)
+            d.implicitly_wait(10)
+            # Warm-up to stabilize DevTools connection in headless
+            d.get('about:blank')
+            time.sleep(1)
+            return d
+
         try:
-            driver = webdriver.Chrome(options=chrome_options)
-            driver.set_page_load_timeout(30)
-            driver.implicitly_wait(10)
+            driver = _launch_driver()
             self.log_with_time('✅ Browser ready')
             return driver
         except Exception as e:
@@ -168,14 +176,26 @@ class SmartTokenServer:
                 if chromedriver_path:
                     service = Service(executable_path=chromedriver_path)
                     driver = webdriver.Chrome(options=chrome_options, service=service)
-                    driver.set_page_load_timeout(30)
+                    driver.set_page_load_timeout(45)
                     driver.implicitly_wait(10)
+                    driver.get('about:blank')
+                    time.sleep(1)
                     self.log_with_time('✅ Browser ready (fallback driver)')
                     return driver
             except Exception as e2:
                 self.log_with_time(f'❌ Browser setup failed (fallback): {e2}')
-            self.log_with_time(f'❌ Browser setup failed: {e}')
-            return None
+            self.log_with_time(f'⚠️ Browser setup failed (first attempt): {e}. Retrying once...')
+            # One-time retry with a fresh user-data-dir
+            try:
+                import shutil, tempfile, uuid
+                retry_user_data_dir = os.path.join(tempfile.gettempdir(), f"chrome-profile-retry-{os.getpid()}-{uuid.uuid4().hex}")
+                chrome_options.add_argument(f"--user-data-dir={retry_user_data_dir}")
+                driver = _launch_driver()
+                self.log_with_time('✅ Browser ready on retry')
+                return driver
+            except Exception as e3:
+                self.log_with_time(f'❌ Browser setup failed (retry): {e3}')
+                return None
     
     def login_to_system(self, driver):
         """Login to tokencursor.io.vn"""
