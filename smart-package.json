@@ -1,0 +1,28 @@
+{
+  "name": "smart-token-server",
+  "version": "1.0.0",
+  "description": "Smart Token Server with AI-powered UI detection",
+  "main": "smart-token-server.js",
+  "scripts": {
+    "start": "node smart-token-server.js",
+    "test": "node test-smart-system.js",
+    "dev": "nodemon smart-token-server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "puppeteer": "^21.5.2",
+    "proxy-agent": "^6.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "token",
+    "puppeteer",
+    "automation",
+    "ui-detection",
+    "smart"
+  ],
+  "author": "Smart Token System",
+  "license": "MIT"
+}
