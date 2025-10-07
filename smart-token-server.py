@@ -155,11 +155,47 @@ class SeleniumTokenServer:
                 except TimeoutException:
                     self.log_with_time('⚠️ No popup found')
                 
-                # Look for "Lấy Token" button
+                # Look for token button with multiple possible texts
                 try:
-                    get_token_button = WebDriverWait(self.driver, 10).until(
-                        EC.element_to_be_clickable((By.XPATH, '//button[contains(text(), "Lấy Token")]'))
-                    )
+                    # Try different button texts
+                    button_texts = [
+                        '//button[contains(text(), "Lấy Token")]',
+                        '//button[contains(text(), "Get Token")]',
+                        '//button[contains(text(), "Token")]',
+                        '//button[contains(text(), "Lấy")]',
+                        '//button[contains(text(), "Get")]'
+                    ]
+                    
+                    get_token_button = None
+                    for button_text in button_texts:
+                        try:
+                            get_token_button = WebDriverWait(self.driver, 5).until(
+                                EC.element_to_be_clickable((By.XPATH, button_text))
+                            )
+                            self.log_with_time(f'✅ Found token button with text: {button_text}')
+                            break
+                        except TimeoutException:
+                            continue
+                    
+                    if not get_token_button:
+                        # Check if there's a cooldown message
+                        page_source = self.driver.page_source
+                        if 'Chờ' in page_source and 'nữa' in page_source:
+                            self.log_with_time('⏰ Key is on cooldown')
+                            return {'success': False, 'error': 'Key is on cooldown', 'cooldown': True}
+                        
+                        # Debug: Log page content
+                        self.log_with_time('📄 Debug: Looking for any buttons...')
+                        buttons = self.driver.find_elements(By.TAG_NAME, 'button')
+                        for i, btn in enumerate(buttons[:5]):  # Check first 5 buttons
+                            try:
+                                text = btn.text.strip()
+                                if text:
+                                    self.log_with_time(f'📄 Button {i+1}: "{text}"')
+                            except:
+                                pass
+                        
+                        raise TimeoutException("No token button found")
                     
                     self.log_with_time('✅ Found "Lấy Token" button')
                     
