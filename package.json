@@ -1,0 +1,34 @@
+{
+  "name": "smart-token-server",
+  "version": "1.0.0",
+  "description": "Smart Token Server with AI-powered UI detection",
+  "main": "webhook-server-auto-railway.js",
+  "type": "module",
+  "scripts": {
+    "start": "node webhook-server-auto-railway.js",
+    "start:original": "node webhook-server-auto-railway.js",
+    "test": "node test-enhanced-server.js",
+    "debug": "node debug-button-finder.js",
+    "dev": "nodemon webhook-server-enhanced.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0",
+    "nodemailer": "^6.9.7",
+    "puppeteer": "^24.23.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "keywords": [
+    "token",
+    "puppeteer",
+    "automation",
+    "ui-detection",
+    "smart"
+  ],
+  "author": "Smart Token System",
+  "license": "MIT"
+}
