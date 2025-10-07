@@ -163,29 +163,65 @@ class UltraLightTokenServer:
             
             self.log_with_time('✅ Login page loaded')
             
-            # Step 2: Simulate login (this is a simplified version)
-            # In reality, we'd need to handle JavaScript authentication
-            self.log_with_time('🔑 Simulating login...')
+            # Step 2: Try to get real token from app page
+            self.log_with_time('🔑 Getting real token from app page...')
             
-            # For now, we'll simulate a successful token fetch
-            # This is a placeholder - in production you'd need proper authentication
-            simulated_token = f"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.{int(time.time())}.simulated_token_for_testing"
+            # Try to access app page directly
+            app_response = session.get('https://tokencursor.io.vn/app', timeout=15)
             
-            self.log_with_time(f'🎉 Simulated token: {simulated_token[:30]}...')
+            if app_response.status_code != 200:
+                self.log_with_time(f'❌ App page failed: {app_response.status_code}')
+                return {'success': False, 'error': f'App page failed: {app_response.status_code}'}
+            
+            # Look for token in response
+            import re
+            page_content = app_response.text
+            
+            # Check for cooldown message
+            if 'Chờ' in page_content and 'nữa' in page_content:
+                self.log_with_time('⏰ Key is on cooldown')
+                return {'success': False, 'error': 'Key is on cooldown', 'cooldown': True}
+            
+            # Look for JWT tokens in the page
+            jwt_patterns = [
+                r'eyJ[A-Za-z0-9+/=]{50,}',  # Full JWT
+                r'eyJ[A-Za-z0-9+/=]{100,}', # Very long JWT
+            ]
+            
+            real_token = None
+            for pattern in jwt_patterns:
+                matches = re.findall(pattern, page_content)
+                if matches:
+                    real_token = matches[0]
+                    break
+            
+            if not real_token:
+                # If no JWT found, look for any long alphanumeric string
+                long_strings = re.findall(r'[a-zA-Z0-9]{30,}', page_content)
+                if long_strings:
+                    real_token = max(long_strings, key=len)
+                    if len(real_token) < 20:
+                        real_token = None
+            
+            if real_token:
+                self.log_with_time(f'🎉 Real token found: {real_token[:30]}...')
+            else:
+                self.log_with_time('❌ No token found in app page')
+                return {'success': False, 'error': 'No token found in app page'}
             
             # Update global variables
-            self.current_token = simulated_token
+            self.current_token = real_token
             self.token_info = {
-                'token': simulated_token,
+                'token': real_token,
                 'timestamp': datetime.now().isoformat(),
-                'method': 'simulated'
+                'method': 'requests'
             }
             self.last_update = time.time()
             
             # Send to Telegram
-            self.send_telegram_message(simulated_token)
+            self.send_telegram_message(real_token)
             
-            return {'success': True, 'token': simulated_token, 'method': 'simulated'}
+            return {'success': True, 'token': real_token, 'method': 'requests'}
                 
         except Exception as e:
             self.log_with_time(f'❌ Token fetching failed: {e}')
