@@ -129,6 +129,233 @@ class UltraLightTokenServer:
         self.log_with_time("🛑 Auto-refresh stopped")
         return True
     
+<<<<<<< HEAD
+=======
+    def setup_browser(self):
+        """Setup Chrome browser for Railway"""
+        self.log_with_time('🌐 Setting up browser...')
+        
+        chrome_options = Options()
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--disable-web-security")
+        chrome_options.add_argument("--window-size=1920,1080")
+        # Use modern headless mode for Chrome 109+
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-plugins")
+        chrome_options.add_argument("--disable-images")
+        # Important: DO NOT disable JavaScript; the site relies on it
+        # Use a unique user-data-dir to avoid profile lock when overlapping runs happen
+        import tempfile, uuid
+        user_data_dir = os.path.join(tempfile.gettempdir(), f"chrome-profile-{os.getpid()}-{int(time.time())}-{uuid.uuid4().hex}")
+        chrome_options.add_argument(f"--user-data-dir={user_data_dir}")
+        # Stability flags for minimal container environments (Railway/Alpine)
+        chrome_options.add_argument("--no-first-run")
+        chrome_options.add_argument("--no-zygote")
+        # Avoid --single-process with Selenium; it can crash recent Chrome builds
+        # Keep DevTools available to prevent disconnection in headless
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--remote-debugging-address=0.0.0.0")
+        chrome_options.add_argument("--disable-background-timer-throttling")
+        chrome_options.add_argument("--disable-backgrounding-occluded-windows")
+        chrome_options.add_argument("--disable-renderer-backgrounding")
+        
+        # Prefer Selenium Manager to pick a matching ChromeDriver
+        # Only set binary if explicitly provided
+        chrome_bin = os.getenv('CHROME_BIN')
+        if chrome_bin:
+            chrome_options.binary_location = chrome_bin
+
+        def _launch_driver():
+            d = webdriver.Chrome(options=chrome_options)
+            d.set_page_load_timeout(45)
+            d.implicitly_wait(10)
+            # Warm-up to stabilize DevTools connection in headless
+            d.get('about:blank')
+            time.sleep(1)
+            return d
+
+        try:
+            driver = _launch_driver()
+            self.log_with_time('✅ Browser ready')
+            return driver
+        except Exception as e:
+            # Fallback: use explicit chromedriver if provided
+            try:
+                chromedriver_path = os.getenv('CHROMEDRIVER_PATH')
+                if chromedriver_path:
+                    service = Service(executable_path=chromedriver_path)
+                    driver = webdriver.Chrome(options=chrome_options, service=service)
+                    driver.set_page_load_timeout(45)
+                    driver.implicitly_wait(10)
+                    driver.get('about:blank')
+                    time.sleep(1)
+                    self.log_with_time('✅ Browser ready (fallback driver)')
+                    return driver
+            except Exception as e2:
+                self.log_with_time(f'❌ Browser setup failed (fallback): {e2}')
+            self.log_with_time(f'⚠️ Browser setup failed (first attempt): {e}. Retrying once...')
+            # One-time retry with a fresh user-data-dir
+            try:
+                import shutil, tempfile, uuid
+                retry_user_data_dir = os.path.join(tempfile.gettempdir(), f"chrome-profile-retry-{os.getpid()}-{uuid.uuid4().hex}")
+                chrome_options.add_argument(f"--user-data-dir={retry_user_data_dir}")
+                driver = _launch_driver()
+                self.log_with_time('✅ Browser ready on retry')
+                return driver
+            except Exception as e3:
+                self.log_with_time(f'❌ Browser setup failed (retry): {e3}')
+                return None
+    
+    def login_to_system(self, driver):
+        """Login to tokencursor.io.vn"""
+        self.log_with_time('🔑 Logging into tokencursor.io.vn...')
+        
+        try:
+            # Navigate to login page
+            driver.get('https://tokencursor.io.vn/login')
+            self.log_with_time('📡 Login page loaded')
+            time.sleep(3)
+            
+            # Find key input field
+            key_input = driver.find_element(By.CSS_SELECTOR, 'input[type="text"], input[type="password"]')
+            self.log_with_time('📝 Found key input field')
+            
+            # Clear and fill key
+            key_input.clear()
+            key_input.send_keys(self.key_id)
+            self.log_with_time(f'⌨️ Entered key: {self.key_id}')
+            
+            # Find and click login button
+            login_button = driver.find_element(By.XPATH, '//button[contains(text(), "Đăng nhập")]')
+            self.log_with_time('🔘 Found login button')
+            
+            # Click login button
+            login_button.click()
+            self.log_with_time('🔄 Clicking login button...')
+            time.sleep(5)
+            
+            # Navigate to app page
+            driver.get('https://tokencursor.io.vn/app')
+            time.sleep(3)
+            
+            # Check if redirected to login (failed login)
+            current_url = driver.current_url
+            if 'login' in current_url:
+                self.log_with_time('❌ Login failed, still on login page')
+                return False
+            
+            self.log_with_time('✅ Login successful, on app page')
+            return True
+                
+        except Exception as e:
+            self.log_with_time(f'❌ Login failed: {e}')
+            return False
+    
+    def handle_notification_popup(self, driver):
+        """Handle the notification popup"""
+        self.log_with_time('🔔 Handling notification popup...')
+        
+        try:
+            # Look for "Đã hiểu" button
+            try:
+                understood_button = WebDriverWait(driver, 5).until(
+                    EC.element_to_be_clickable((By.XPATH, '//button[contains(text(), "Đã hiểu")]'))
+                )
+                understood_button.click()
+                self.log_with_time('✅ Clicked "Đã hiểu" button')
+                time.sleep(2)
+                return True
+            except TimeoutException:
+                self.log_with_time('⚠️ "Đã hiểu" button not found')
+            
+            # Look for close button (X)
+            try:
+                close_button = driver.find_element(By.CSS_SELECTOR, 'button[aria-label="Close"], .close, [data-dismiss="modal"]')
+                close_button.click()
+                self.log_with_time('✅ Clicked close button')
+                time.sleep(2)
+                return True
+            except:
+                self.log_with_time('⚠️ Close button not found')
+            
+            self.log_with_time('ℹ️ No popup found, continuing...')
+            return True
+            
+        except Exception as e:
+            self.log_with_time(f'⚠️ Popup handling failed: {e}')
+            return True  # Continue anyway
+    
+    def get_token_from_app(self, driver):
+        """Get token from app page"""
+        self.log_with_time('🎯 Getting token from app page...')
+        
+        try:
+            # Handle popup first
+            self.handle_notification_popup(driver)
+            
+            # Get page content to check status
+            page_source = driver.page_source
+            all_text = driver.find_element(By.TAG_NAME, "body").text
+            
+            # Check if there's a cooldown message
+            if 'Chờ' in all_text and 'nữa' in all_text:
+                self.log_with_time('⏰ Key is on cooldown, cannot get token now')
+                return {'success': False, 'error': 'Key is on cooldown', 'cooldown': True}
+            
+            # Look for "Lấy Token" button
+            try:
+                get_token_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.XPATH, '//button[contains(text(), "Lấy Token")]'))
+                )
+                
+                self.log_with_time('✅ Found "Lấy Token" button')
+                
+                # Click the button
+                get_token_button.click()
+                self.log_with_time('🔄 Clicking "Lấy Token" button...')
+                time.sleep(5)
+                
+                # Look for token in page content
+                import re
+                page_source = driver.page_source
+                
+                # Look for JWT tokens
+                jwt_patterns = [
+                    r'eyJ[A-Za-z0-9+/=]{50,}',  # Full JWT
+                    r'eyJ[A-Za-z0-9+/=]{100,}', # Very long JWT
+                ]
+                
+                for pattern in jwt_patterns:
+                    matches = re.findall(pattern, page_source)
+                    if matches:
+                        token = matches[0]
+                        self.log_with_time(f'🎉 Found token: {token[:30]}...')
+                        return {'success': True, 'token': token, 'method': 'selenium'}
+                
+                # If no JWT found, look for any long alphanumeric string
+                long_strings = re.findall(r'[a-zA-Z0-9]{30,}', page_source)
+                if long_strings:
+                    # Use the longest string
+                    token = max(long_strings, key=len)
+                    if len(token) > 20:
+                        self.log_with_time(f'🎉 Found potential token: {token[:30]}...')
+                        return {'success': True, 'token': token, 'method': 'selenium'}
+                
+                self.log_with_time('⚠️ No token found after clicking button')
+                return {'success': False, 'error': 'No token found after clicking'}
+                
+            except TimeoutException:
+                self.log_with_time('❌ "Lấy Token" button not found')
+                return {'success': False, 'error': 'Lấy Token button not found'}
+                
+        except Exception as e:
+            self.log_with_time(f'❌ Token fetching failed: {e}')
+            return {'success': False, 'error': str(e)}
+    
+>>>>>>> 0fab5e6ce0c7e8c8b165776ce4dbf26fe3a25101
     def fetch_token(self):
         """Ultra lightweight token fetching using requests only"""
         if self.is_fetching:
