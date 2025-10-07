@@ -1,0 +1,17 @@
+providers = ["python"]
+
+[phases.setup]
+nixPkgs = ["google-chrome", "chromium", "libnss3", "libatk1.0-0", "libatk-bridge2.0-0", "libcups2", "libgbm1", "libasound2t64", "libpangocairo-1.0-0", "libxss1", "libgtk-3-0", "libxshmfence1", "libglu1"]
+
+[phases.install]
+cmds = ["pip install --no-cache-dir -r requirements.txt"]
+
+[phases.build]
+cmds = ["echo 'Build completed - optimized server ready'"]
+
+[start]
+cmd = "python3 smart-token-server.py"
+
+[variables]
+AUTO_REFRESH = "true"
+AUTO_REFRESH_INTERVAL = "600"
