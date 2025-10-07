@@ -129,6 +129,49 @@ class UltraLightTokenServer:
         self.log_with_time("🛑 Auto-refresh stopped")
         return True
     
+    def _authenticate_and_get_token(self, session):
+        """Try to authenticate with key and get token"""
+        try:
+            self.log_with_time('🔐 Attempting key authentication...')
+            
+            # Try to find login form and submit key
+            login_data = {
+                'key': self.key_id,
+                'password': '',  # Empty password if not needed
+            }
+            
+            # Try POST to login endpoint
+            login_response = session.post('https://tokencursor.io.vn/login', data=login_data, timeout=15)
+            
+            if login_response.status_code == 200:
+                self.log_with_time('✅ Key authentication successful')
+                
+                # Now try to get app page again
+                app_response = session.get('https://tokencursor.io.vn/app', timeout=15)
+                if app_response.status_code == 200:
+                    page_content = app_response.text
+                    
+                    # Look for token again
+                    import re
+                    jwt_patterns = [
+                        r'eyJ[A-Za-z0-9+/=]{50,}',
+                        r'eyJ[A-Za-z0-9+/=]{100,}',
+                    ]
+                    
+                    for pattern in jwt_patterns:
+                        matches = re.findall(pattern, page_content)
+                        if matches:
+                            token = matches[0]
+                            self.log_with_time(f'🎉 Authenticated token found: {token[:30]}...')
+                            return {'success': True, 'token': token, 'method': 'authenticated'}
+            
+            self.log_with_time('❌ Key authentication failed')
+            return {'success': False, 'error': 'Key authentication failed'}
+            
+        except Exception as e:
+            self.log_with_time(f'❌ Authentication error: {e}')
+            return {'success': False, 'error': f'Authentication error: {e}'}
+    
     def fetch_token(self):
         """Ultra lightweight token fetching using requests only"""
         if self.is_fetching:
@@ -173,9 +216,12 @@ class UltraLightTokenServer:
                 self.log_with_time(f'❌ App page failed: {app_response.status_code}')
                 return {'success': False, 'error': f'App page failed: {app_response.status_code}'}
             
+            # Debug: Log page content to understand structure
+            page_content = app_response.text
+            self.log_with_time(f'📄 App page loaded, content length: {len(page_content)}')
+            
             # Look for token in response
             import re
-            page_content = app_response.text
             
             # Check for cooldown message
             if 'Chờ' in page_content and 'nữa' in page_content:
@@ -206,8 +252,16 @@ class UltraLightTokenServer:
             if real_token:
                 self.log_with_time(f'🎉 Real token found: {real_token[:30]}...')
             else:
-                self.log_with_time('❌ No token found in app page')
-                return {'success': False, 'error': 'No token found in app page'}
+                # Debug: Check if page contains login form or other elements
+                if 'login' in page_content.lower() or 'đăng nhập' in page_content.lower():
+                    self.log_with_time('🔐 App page requires login - trying with key authentication')
+                    # Try to authenticate with key
+                    return self._authenticate_and_get_token(session)
+                else:
+                    self.log_with_time('❌ No token found in app page')
+                    # Debug: Save page content for analysis
+                    self.log_with_time(f'📄 Page preview: {page_content[:200]}...')
+                    return {'success': False, 'error': 'No token found in app page'}
             
             # Update global variables
             self.current_token = real_token
