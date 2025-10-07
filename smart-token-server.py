@@ -181,8 +181,18 @@ class SeleniumTokenServer:
                         # Check if there's a cooldown message
                         page_source = self.driver.page_source
                         if 'Chờ' in page_source and 'nữa' in page_source:
-                            self.log_with_time('⏰ Key is on cooldown')
-                            return {'success': False, 'error': 'Key is on cooldown', 'cooldown': True}
+                            # Extract cooldown time
+                            import re
+                            cooldown_match = re.search(r'Chờ (\d+):(\d+) nữa', page_source)
+                            if cooldown_match:
+                                minutes = int(cooldown_match.group(1))
+                                seconds = int(cooldown_match.group(2))
+                                total_seconds = minutes * 60 + seconds
+                                self.log_with_time(f'⏰ Key is on cooldown for {minutes}:{seconds:02d} ({total_seconds}s)')
+                                return {'success': False, 'error': f'Key is on cooldown for {minutes}:{seconds:02d}', 'cooldown': True, 'cooldown_seconds': total_seconds}
+                            else:
+                                self.log_with_time('⏰ Key is on cooldown (time not detected)')
+                                return {'success': False, 'error': 'Key is on cooldown', 'cooldown': True}
                         
                         # Debug: Log page content
                         self.log_with_time('📄 Debug: Looking for any buttons...')
@@ -267,8 +277,9 @@ class SeleniumTokenServer:
                 self.send_telegram_message(result['token'])
             else:
                 if result.get('cooldown'):
-                    self.cooldown_until = time.time() + 300  # 5 minutes cooldown
-                    self.log_with_time("⏰ Key on cooldown for 5 minutes")
+                    cooldown_seconds = result.get('cooldown_seconds', 300)  # Use detected cooldown or default 5 minutes
+                    self.cooldown_until = time.time() + cooldown_seconds
+                    self.log_with_time(f"⏰ Key on cooldown for {cooldown_seconds}s")
                 self.log_with_time(f"❌ Token fetch failed: {result.get('error', 'Unknown error')}")
             
             return result
