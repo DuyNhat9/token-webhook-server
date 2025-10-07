@@ -172,6 +172,51 @@ class UltraLightTokenServer:
             self.log_with_time(f'❌ Authentication error: {e}')
             return {'success': False, 'error': f'Authentication error: {e}'}
     
+    def _fallback_app_page_scraping(self, session):
+        """Fallback method to scrape app page"""
+        try:
+            self.log_with_time('🔄 Fallback: Trying app page scraping...')
+            
+            # Try to access app page directly
+            app_response = session.get('https://tokencursor.io.vn/app', timeout=15)
+            
+            if app_response.status_code != 200:
+                self.log_with_time(f'❌ App page failed: {app_response.status_code}')
+                return {'success': False, 'error': f'App page failed: {app_response.status_code}'}
+            
+            page_content = app_response.text
+            self.log_with_time(f'📄 App page loaded, content length: {len(page_content)}')
+            
+            # Check for cooldown message
+            if 'Chờ' in page_content and 'nữa' in page_content:
+                self.log_with_time('⏰ Key is on cooldown')
+                return {'success': False, 'error': 'Key is on cooldown', 'cooldown': True}
+            
+            # Look for JWT tokens
+            import re
+            jwt_patterns = [
+                r'eyJ[A-Za-z0-9+/=]{50,}',
+                r'eyJ[A-Za-z0-9+/=]{100,}',
+            ]
+            
+            real_token = None
+            for pattern in jwt_patterns:
+                matches = re.findall(pattern, page_content)
+                if matches:
+                    real_token = matches[0]
+                    break
+            
+            if real_token:
+                self.log_with_time(f'🎉 Fallback token found: {real_token[:30]}...')
+                return {'success': True, 'token': real_token, 'method': 'fallback_scraping'}
+            else:
+                self.log_with_time('❌ No token found in fallback scraping')
+                return {'success': False, 'error': 'No token found in fallback scraping'}
+                
+        except Exception as e:
+            self.log_with_time(f'❌ Fallback scraping error: {e}')
+            return {'success': False, 'error': f'Fallback error: {e}'}
+    
     def fetch_token(self):
         """Ultra lightweight token fetching using requests only"""
         if self.is_fetching:
@@ -206,62 +251,41 @@ class UltraLightTokenServer:
             
             self.log_with_time('✅ Login page loaded')
             
-            # Step 2: Try to get real token from app page
-            self.log_with_time('🔑 Getting real token from app page...')
+            # Step 2: Try to get token via API
+            self.log_with_time('🔑 Getting token via API...')
             
-            # Try to access app page directly
-            app_response = session.get('https://tokencursor.io.vn/app', timeout=15)
+            # Try API endpoint first
+            api_response = session.post('https://tokencursor.io.vn/api/token', 
+                json={'key': self.key_id},
+                headers={
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Referer': 'https://tokencursor.io.vn/login',
+                    'Origin': 'https://tokencursor.io.vn'
+                },
+                timeout=15
+            )
             
-            if app_response.status_code != 200:
-                self.log_with_time(f'❌ App page failed: {app_response.status_code}')
-                return {'success': False, 'error': f'App page failed: {app_response.status_code}'}
-            
-            # Debug: Log page content to understand structure
-            page_content = app_response.text
-            self.log_with_time(f'📄 App page loaded, content length: {len(page_content)}')
-            
-            # Look for token in response
-            import re
-            
-            # Check for cooldown message
-            if 'Chờ' in page_content and 'nữa' in page_content:
-                self.log_with_time('⏰ Key is on cooldown')
-                return {'success': False, 'error': 'Key is on cooldown', 'cooldown': True}
-            
-            # Look for JWT tokens in the page
-            jwt_patterns = [
-                r'eyJ[A-Za-z0-9+/=]{50,}',  # Full JWT
-                r'eyJ[A-Za-z0-9+/=]{100,}', # Very long JWT
-            ]
-            
-            real_token = None
-            for pattern in jwt_patterns:
-                matches = re.findall(pattern, page_content)
-                if matches:
-                    real_token = matches[0]
-                    break
-            
-            if not real_token:
-                # If no JWT found, look for any long alphanumeric string
-                long_strings = re.findall(r'[a-zA-Z0-9]{30,}', page_content)
-                if long_strings:
-                    real_token = max(long_strings, key=len)
-                    if len(real_token) < 20:
-                        real_token = None
-            
-            if real_token:
-                self.log_with_time(f'🎉 Real token found: {real_token[:30]}...')
+            if api_response.status_code == 200:
+                try:
+                    api_data = api_response.json()
+                    if 'token' in api_data:
+                        real_token = api_data['token']
+                        self.log_with_time(f'🎉 API token found: {real_token[:30]}...')
+                    elif 'error' in api_data:
+                        error_msg = api_data.get('message', 'Unknown API error')
+                        self.log_with_time(f'❌ API error: {error_msg}')
+                        return {'success': False, 'error': f'API error: {error_msg}'}
+                    else:
+                        self.log_with_time('❌ No token in API response')
+                        return {'success': False, 'error': 'No token in API response'}
+                except Exception as e:
+                    self.log_with_time(f'❌ API response parsing failed: {e}')
+                    return {'success': False, 'error': f'API parsing failed: {e}'}
             else:
-                # Debug: Check if page contains login form or other elements
-                if 'login' in page_content.lower() or 'đăng nhập' in page_content.lower():
-                    self.log_with_time('🔐 App page requires login - trying with key authentication')
-                    # Try to authenticate with key
-                    return self._authenticate_and_get_token(session)
-                else:
-                    self.log_with_time('❌ No token found in app page')
-                    # Debug: Save page content for analysis
-                    self.log_with_time(f'📄 Page preview: {page_content[:200]}...')
-                    return {'success': False, 'error': 'No token found in app page'}
+                self.log_with_time(f'❌ API failed: {api_response.status_code}')
+                # Fallback to app page scraping
+                return self._fallback_app_page_scraping(session)
             
             # Update global variables
             self.current_token = real_token
