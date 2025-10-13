@@ -14,4 +14,4 @@ cmd = "python3 smart-token-server.py"
 
 [variables]
 AUTO_REFRESH = "true"
-AUTO_REFRESH_INTERVAL = "600"
+AUTO_REFRESH_INTERVAL = "900"

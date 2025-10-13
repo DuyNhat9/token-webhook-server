@@ -54,7 +54,7 @@ curl -X POST https://your-app.railway.app/refresh \
      -d '{"apiKey": "your-secret-api-key-123"}'
 ```
 
-## 🔔 Discord Notifications
+## 🔔 Telegram Notifications
 
 1. Create a Discord webhook in your server
 2. Copy the webhook URL
@@ -101,8 +101,8 @@ npm install
 cp env.example .env
 # Edit .env with your values
 
-# Run server
-npm start
+# Run server (Python)
+python3 smart-token-server.py
 
 # Test endpoints
 curl http://localhost:3000/health
@@ -111,7 +111,7 @@ curl http://localhost:3000/health
 ## 📁 Project Structure
 
 ```
-├── webhook-server.js      # Main server
+├── smart-token-server.py  # Selenium Token Server (Python)
 ├── client-request.js      # Client to request tokens
 ├── railway.json          # Railway deployment config
 ├── .github/workflows/    # GitHub Actions

@@ -42,8 +42,8 @@ COPY . .
 ENV CHROME_BIN=/usr/bin/google-chrome
 ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
 
-# Expose port
-EXPOSE 5000
+# Expose port (Selenium server uses 8080)
+EXPOSE 8080
 
 # Run the application
 CMD ["python3", "smart-token-server.py"]
